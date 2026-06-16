@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>激活码管理</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,sans-serif;background:#0f0f1a;color:#d0d0e0;padding:24px;max-width:600px;margin:0 auto}
+h1{background:linear-gradient(135deg,#d4a574,#ecd5b0);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:20px}
+.card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:18px;margin-bottom:16px}
+label{display:block;font-size:0.78rem;color:rgba(200,200,224,0.5);margin-bottom:4px}
+input[type=text],input[type=number]{width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e0d8c8;font-size:0.9rem;outline:none}
+input:focus{border-color:rgba(212,167,116,0.5)}
+.row{display:flex;gap:10px;align-items:end;margin-top:10px}
+.row>*{flex:1}
+.btn{padding:8px 16px;border:none;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;transition:opacity 0.2s}
+.btn:hover{opacity:0.85}
+.btn-primary{background:linear-gradient(135deg,#d4a574,#b8845a);color:#1a1a2e}
+.btn-danger{background:#a03030;color:#e0d8c8}
+.btn-secondary{background:rgba(255,255,255,0.08);color:#c0c0d0}
+.code-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.code-tag{background:rgba(212,167,116,0.12);border:1px solid rgba(212,167,116,0.2);border-radius:4px;padding:4px 10px;font-size:0.78rem;cursor:pointer;user-select:none;transition:all 0.15s}
+.code-tag:hover{background:rgba(212,167,116,0.22)}
+.code-tag.selected{background:rgba(212,60,60,0.25);border-color:rgba(212,60,60,0.4)}
+.toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:rgba(20,20,42,0.95);border:1px solid rgba(212,167,116,0.3);padding:8px 18px;border-radius:20px;font-size:0.78rem;z-index:100;pointer-events:none;opacity:0;transition:opacity 0.3s}
+.toast.show{opacity:1}
+.status{font-size:0.75rem;color:rgba(200,200,224,0.4);text-align:center;margin-top:16px}
+</style>
+</head>
+<body>
+<h1>激活码管理</h1>
+
+<div class="card">
+  <label>服务器地址</label>
+  <input type="text" id="serverUrl" value="http://cloisonne.codex.ski">
+  <label style="margin-top:8px">管理密钥</label>
+  <input type="text" id="adminKey" value="cls-admin-2026">
+  <button class="btn btn-secondary" style="margin-top:10px;width:100%" onclick="refresh()">刷新列表</button>
+</div>
+
+<div class="card">
+  <label>当前激活码（<span id="count">0</span>个）点击选中</label>
+  <div class="code-list" id="codeList"></div>
+  <div style="margin-top:8px;display:flex;gap:8px">
+    <button class="btn btn-danger" onclick="delSelected()" style="flex:1">删除选中</button>
+    <button class="btn btn-primary" onclick="copySelected()" style="flex:1">复制选中</button>
+  </div>
+</div>
+
+<div class="card">
+  <label>批量生成</label>
+  <div class="row">
+    <div><label>前缀</label><input type="text" id="genPrefix" value="CLSN-2026-"></div>
+    <div><label>数量</label><input type="number" id="genCount" value="5" min="1" max="100"></div>
+    <div><label>起始编号</label><input type="number" id="genStart" value="6" min="1"></div>
+  </div>
+  <button class="btn btn-primary" style="margin-top:10px;width:100%" onclick="generate()">生成并添加</button>
+</div>
+
+<div class="card">
+  <label>手动添加（每行一个）</label>
+  <textarea id="addCodes" rows="4" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e0d8c8;font-size:0.85rem;padding:8px;outline:none;resize:vertical;font-family:monospace"></textarea>
+  <button class="btn btn-primary" style="margin-top:8px;width:100%" onclick="addCodes()">添加</button>
+</div>
+
+<div class="status" id="status">就绪</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+let codes=[],selected=new Set();
+
+$('serverUrl').value=localStorage.getItem('cls_mgr_url')||'http://cloisonne.codex.ski';
+$('adminKey').value=localStorage.getItem('cls_mgr_key')||'cls-admin-2026';
+
+function toast(msg){
+  const t=$('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2000);
+}
+
+function api(method,body){
+  const base=$('serverUrl').value.trim();
+  const key=$('adminKey').value.trim();
+  localStorage.setItem('cls_mgr_url',base);
+  localStorage.setItem('cls_mgr_key',key);
+  const url=`${base}/api/admin/codes?key=${encodeURIComponent(key)}`;
+  return fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined})
+    .then(r=>r.json());
+}
+
+async function refresh(){
+  $('status').textContent='加载中...';
+  try{
+    const r=await api('GET');
+    if(!r.ok){toast(r.msg);$('status').textContent='失败: '+r.msg;return}
+    codes=r.codes;
+    selected.clear();
+    render();
+    $('status').textContent=`已加载 ${codes.length} 个激活码`;
+  }catch(e){$('status').textContent='连接失败';toast('连接服务器失败')}
+}
+
+function render(){
+  $('count').textContent=codes.length;
+  $('codeList').innerHTML=codes.map(c=>
+    `<span class="code-tag${selected.has(c)?' selected':''}" onclick="toggle('${c}')">${c}</span>`
+  ).join('');
+}
+
+function toggle(c){
+  selected.has(c)?selected.delete(c):selected.add(c);
+  render();
+}
+
+async function generate(){
+  const prefix=$('genPrefix').value.trim();
+  const count=parseInt($('genCount').value)||5;
+  const start=parseInt($('genStart').value)||1;
+  const newCodes=[];
+  for(let i=0;i<count;i++)newCodes.push(prefix+String(start+i).padStart(4,'0'));
+  try{
+    const r=await api('POST',{codes:newCodes});
+    if(!r.ok){toast(r.msg);return}
+    toast(`已添加 ${r.added} 个`);
+    $('genStart').value=start+count;
+    refresh();
+  }catch(e){toast('操作失败')}
+}
+
+async function addCodes(){
+  const text=$('addCodes').value.trim();
+  if(!text){toast('请输入激活码');return}
+  const cs=text.split(/[\n,]+/).map(c=>c.trim()).filter(Boolean);
+  try{
+    const r=await api('POST',{codes:cs});
+    if(!r.ok){toast(r.msg);return}
+    toast(`已添加 ${r.added} 个`);
+    $('addCodes').value='';
+    refresh();
+  }catch(e){toast('操作失败')}
+}
+
+async function delSelected(){
+  if(selected.size===0){toast('请先选中激活码');return}
+  if(!confirm(`确认删除 ${selected.size} 个激活码？`))return;
+  const cs=[...selected];
+  try{
+    const r=await api('DELETE',{codes:cs});
+    if(!r.ok){toast(r.msg);return}
+    toast(`已删除`);
+    refresh();
+  }catch(e){toast('操作失败')}
+}
+
+function copySelected(){
+  if(selected.size===0){toast('请先选中激活码');return}
+  navigator.clipboard.writeText([...selected].join('\n'));
+  toast(`已复制 ${selected.size} 个`);
+}
+
+refresh();
+</script>
+</body>
+</html>

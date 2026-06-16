@@ -6,15 +6,7 @@
 <title>掐丝珐琅 STL</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#05050f;--panel:rgba(12,12,30,0.7);--border:rgba(255,255,255,0.06);--accent:#00d4ff;--gold:#d4a574;--text:#a0a8c0;--text-dim:rgba(160,168,192,0.45);--text-bright:#d0d6f0;--slider-track:rgba(0,212,255,0.08);--slider-fill:rgba(0,212,255,0.3);--danger:#ff5c72;--radius:8px;--radius-sm:4px;--tip-bg:rgba(5,5,15,0.96);--tip-color:#d0d6f0;--tip-border:rgba(0,212,255,0.15);--tip-shadow:0 4px 16px rgba(0,0,0,0.5)}
-[data-theme="light"]{--bg:#dfe3ea;--panel:rgba(248,248,250,0.88);--border:rgba(0,0,0,0.08);--accent:#0066cc;--gold:#b8860b;--text:#444;--text-dim:rgba(0,0,0,0.35);--text-bright:#111;--slider-track:rgba(0,0,0,0.06);--slider-fill:rgba(0,102,204,0.22);--danger:#d63031;--tip-bg:rgba(255,255,255,0.98);--tip-color:#222;--tip-border:rgba(0,0,0,0.12);--tip-shadow:0 4px 16px rgba(0,0,0,0.08)}
-[data-theme="light"] body::before{background-image:linear-gradient(rgba(0,0,0,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.03) 1px,transparent 1px)}
-[data-theme="light"] .upload-zone{background:rgba(0,102,204,0.04);border-color:rgba(0,102,204,0.25);color:var(--accent)}
-[data-theme="light"] .toast{background:rgba(255,255,255,0.95);color:var(--accent);border-color:rgba(0,102,204,0.2)}
-[data-theme="light"] .loading-overlay{background:rgba(255,255,255,0.88)}
-[data-theme="light"] .edge-section{background:#ddd}
-[data-theme="light"] .right{background:radial-gradient(ellipse at center,rgba(0,102,204,0.02) 0%,transparent 70%)}
-[data-theme="light"] .left{background:rgba(0,0,0,0.02)}
+:root{--bg:#05050f;--panel:rgba(12,12,30,0.7);--border:rgba(255,255,255,0.06);--accent:#00d4ff;--gold:#d4a574;--text:#a0a8c0;--text-dim:rgba(160,168,192,0.45);--text-bright:#d0d6f0;--slider-track:rgba(0,212,255,0.08);--slider-fill:rgba(0,212,255,0.3);--danger:#ff5c72;--radius:8px;--radius-sm:4px}
 body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column}
 /* Subtle grid bg */
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.02) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
@@ -29,33 +21,33 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:rgba(5,5,15,0.95);color:var(--accent);border:1px solid rgba(0,212,255,0.2);padding:9px 22px;border-radius:20px;font-size:0.75rem;font-weight:600;z-index:100;opacity:0;pointer-events:none;transition:opacity 0.3s;backdrop-filter:blur(8px);box-shadow:0 4px 20px rgba(0,212,255,0.08)}
 .toast.show{opacity:1}
 #fileInput{display:none}
-.main{display:flex;flex:1;overflow:hidden;position:relative;z-index:1;min-width:0}
-.left{width:clamp(380px,55vw,640px);flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden;background:rgba(0,0,0,0.15)}
+.main{display:flex;flex:1;overflow:hidden;position:relative;z-index:1}
+.left{width:40%;min-width:360px;display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden;background:rgba(0,0,0,0.15)}
 .edge-section{flex:1;position:relative;background:#000;overflow:hidden;border-bottom:1px solid var(--border)}
 .edge-section canvas{width:100%;height:100%;object-fit:contain}
-.edge-section .label{position:absolute;top:8px;left:10px;font-size:0.62rem;opacity:0.35;background:rgba(0,0,0,0.6);padding:3px 8px;border-radius:3px;letter-spacing:1px;text-transform:uppercase}
-.controls{background:var(--panel);padding:14px 18px;flex-shrink:0;backdrop-filter:blur(12px);overflow-y:auto;max-height:45vh;scrollbar-width:thin;scrollbar-color:rgba(0,212,255,0.1) transparent}
-.controls .section-label{font-size:0.72rem;text-transform:uppercase;letter-spacing:2px;color:var(--accent);opacity:0.6;margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid rgba(0,212,255,0.06)}
+.edge-section .label{position:absolute;top:8px;left:10px;font-size:0.55rem;opacity:0.3;background:rgba(0,0,0,0.6);padding:3px 8px;border-radius:3px;letter-spacing:1px;text-transform:uppercase}
+.controls{background:var(--panel);padding:10px 14px;flex-shrink:0;backdrop-filter:blur(12px);overflow-y:auto;max-height:45vh;scrollbar-width:thin;scrollbar-color:rgba(0,212,255,0.1) transparent}
+.controls .section-label{font-size:0.56rem;text-transform:uppercase;letter-spacing:2px;color:var(--accent);opacity:0.5;margin:8px 0 4px;padding-bottom:3px;border-bottom:1px solid rgba(0,212,255,0.06)}
 .controls .section-label:first-child{margin-top:0}
-.controls .row{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px}
+.controls .row{display:grid;grid-template-columns:1fr 1fr;gap:3px 14px}
 .controls .row.single{grid-template-columns:1fr}
-.control-item{display:flex;align-items:center;gap:8px;position:relative}
-.control-item::after{content:attr(data-tooltip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--tip-bg);color:var(--tip-color);font-size:0.68rem;line-height:1.5;padding:5px 10px;border-radius:var(--radius-sm);border:1px solid var(--tip-border);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.18s,transform 0.18s;transform:translateX(-50%) translateY(4px);z-index:20;letter-spacing:0.3px;box-shadow:var(--tip-shadow)}
+.control-item{display:flex;align-items:center;gap:6px;position:relative}
+.control-item::after{content:attr(data-tooltip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:rgba(5,5,15,0.96);color:var(--text-bright);font-size:0.56rem;line-height:1.5;padding:5px 10px;border-radius:var(--radius-sm);border:1px solid rgba(0,212,255,0.15);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.18s,transform 0.18s;transform:translateX(-50%) translateY(4px);z-index:20;letter-spacing:0.3px;box-shadow:0 4px 16px rgba(0,0,0,0.5)}
 .control-item:hover::after{opacity:1;transform:translateX(-50%) translateY(0)}
-.control-label{font-size:0.78rem;opacity:0.55;white-space:nowrap;min-width:56px;letter-spacing:0.3px;cursor:default}
+.control-label{font-size:0.6rem;opacity:0.42;white-space:nowrap;min-width:44px;letter-spacing:0.3px;cursor:default}
 /* Custom slider */
-.control-item input[type=range]{flex:1;-webkit-appearance:none;height:5px;border-radius:3px;background:var(--slider-track);outline:none;position:relative}
-.control-item input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:3px}
-.control-item input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);box-shadow:0 0 8px rgba(0,212,255,0.3);transition:box-shadow 0.15s;margin-top:-6px}
+.control-item input[type=range]{flex:1;-webkit-appearance:none;height:4px;border-radius:2px;background:var(--slider-track);outline:none;position:relative}
+.control-item input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px}
+.control-item input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);box-shadow:0 0 8px rgba(0,212,255,0.3);transition:box-shadow 0.15s;margin-top:-5px}
 .control-item input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 16px rgba(0,212,255,0.5)}
-.control-item input[type=number]{width:60px;background:rgba(255,255,255,0.03);border:1px solid var(--border);color:var(--text-bright);border-radius:var(--radius-sm);padding:4px 6px;font-size:0.78rem;text-align:center;letter-spacing:0.5px}
+.control-item input[type=number]{width:52px;background:rgba(255,255,255,0.03);border:1px solid var(--border);color:var(--text-bright);border-radius:var(--radius-sm);padding:3px 5px;font-size:0.65rem;text-align:center;letter-spacing:0.5px}
 .control-item input[type=number]:focus{outline:none;border-color:rgba(0,212,255,0.3);box-shadow:0 0 6px rgba(0,212,255,0.08)}
-.control-value{font-size:0.72rem;min-width:36px;text-align:right;opacity:0.5;font-variant-numeric:tabular-nums}
-.base-toggle{display:flex;align-items:center;gap:8px;padding:7px 0;cursor:pointer;font-size:0.78rem;opacity:0.55;user-select:none;letter-spacing:0.5px;transition:opacity 0.15s}
-.base-toggle:hover{opacity:0.75}
-.base-toggle input{accent-color:var(--accent);width:14px;height:14px}
-.btn-row{display:flex;gap:10px;padding-top:10px}
-.btn{flex:1;padding:10px;border:none;border-radius:var(--radius);font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;letter-spacing:1.5px;position:relative;overflow:hidden}
+.control-value{font-size:0.6rem;min-width:30px;text-align:right;opacity:0.4;font-variant-numeric:tabular-nums}
+.base-toggle{display:flex;align-items:center;gap:6px;padding:6px 0;cursor:pointer;font-size:0.62rem;opacity:0.45;user-select:none;letter-spacing:0.5px;transition:opacity 0.15s}
+.base-toggle:hover{opacity:0.65}
+.base-toggle input{accent-color:var(--accent);width:13px;height:13px}
+.btn-row{display:flex;gap:7px;padding-top:8px}
+.btn{flex:1;padding:9px;border:none;border-radius:var(--radius);font-size:0.7rem;font-weight:600;cursor:pointer;transition:all 0.15s;letter-spacing:1.5px;position:relative;overflow:hidden}
 .btn:active{transform:scale(0.96)}
 .btn-primary{background:linear-gradient(135deg,var(--gold),#b8860b);color:#0a0a14;box-shadow:0 2px 12px rgba(212,167,116,0.2)}
 .btn-primary:hover{box-shadow:0 4px 20px rgba(212,167,116,0.35)}
@@ -63,9 +55,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .btn-secondary:hover{background:rgba(0,212,255,0.05);border-color:rgba(0,212,255,0.3)}
 .help-toggle{display:none}
 .help-panel{display:none}
-.th-toggle{background:none;border:1px solid var(--border);color:var(--text);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0}
-.th-toggle:hover{background:rgba(0,212,255,0.08);border-color:var(--accent)}
-.right{flex:1;position:relative;background:radial-gradient(ellipse at center,rgba(0,212,255,0.02) 0%,transparent 70%);overflow:hidden;min-width:0}
+.right{flex:1;position:relative;background:radial-gradient(ellipse at center,rgba(0,212,255,0.02) 0%,transparent 70%);overflow:hidden}
 .right canvas{width:100%;height:100%;display:block}
 .right .hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:0.58rem;opacity:0.12;pointer-events:none;letter-spacing:1px}
 .loading-overlay{position:absolute;inset:0;background:rgba(5,5,15,0.92);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:10;backdrop-filter:blur(4px)}
@@ -73,8 +63,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .spinner{width:32px;height:32px;border:2.5px solid rgba(0,212,255,0.08);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;box-shadow:0 0 12px rgba(0,212,255,0.15)}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-text{font-size:0.72rem;color:rgba(0,212,255,0.4);letter-spacing:1px}
-@media(max-width:1100px){.left{width:clamp(300px,44vw,460px)}.controls .row{grid-template-columns:1fr}}
-@media(max-width:768px){.main{flex-direction:column}.left{width:100%;flex-shrink:1;max-height:50vh}.edge-section{flex:none;height:50%}.controls{max-height:25vh}.right{flex:none;height:50vh;min-height:50vh}}
+@media(max-width:768px){.main{flex-direction:column}.left{width:100%;min-width:unset;max-height:50vh}.edge-section{flex:none;height:50%}.controls{max-height:25vh}.right{flex:none;height:50vh;min-height:50vh}}
 </style>
 </head>
 <body>
@@ -82,7 +71,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   <h1>赛博掐丝生成器</h1>
   <span class="stat-chip" id="statChip"></span>
   <div style="flex:1"></div>
-  <button class="th-toggle" id="thToggle" title="切换浅色/深色模式">☀</button>
   <a href="https://v.douyin.com/lIuC7obwACY/" target="_blank" style="font-size:0.68rem;color:var(--gold);letter-spacing:1px;white-space:nowrap;font-weight:500;text-decoration:none">作者：抖音李玉AI</a>
 </div>
 <div class="main">
@@ -123,13 +111,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <label class="base-toggle" title="非线稿图片（照片、插画等）勾选此项，自动提取边缘轮廓后再生成3D模型">
         <input type="checkbox" id="edgeDetect"><span>照片提取边缘</span>
       </label>
-      <label class="base-toggle" title="为整个图案添加外框，矩形沿轮廓外接矩形边缘生成，圆形以轮廓中心为圆心">
-        <input type="checkbox" id="genFrame"><span>生成图框</span>
-        <select id="frameShape" disabled style="margin-left:8px;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px 6px;font-size:0.72rem">
-          <option value="rect">矩形</option>
-          <option value="circle">圆形</option>
-        </select>
-      </label>
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="rebuild()">刷新预览</button>
         <button class="btn btn-primary" onclick="exportSTL()">导出 STL</button>
@@ -164,9 +145,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-(function(){const t=document.documentElement,b=$('thToggle');const saved=localStorage.getItem('cloisonne-theme');if(saved==='light'){t.dataset.theme='light';b.textContent='☾'}b.onclick=()=>{const isLight=t.dataset.theme==='light';if(isLight){delete t.dataset.theme;b.textContent='☀';localStorage.setItem('cloisonne-theme','dark')}else{t.dataset.theme='light';b.textContent='☾';localStorage.setItem('cloisonne-theme','light')}}})();
 let OI,SC,SR,CAM,TUBE,BASE,CP,BS=100,oiW,oiH,rebDeb;
-let P={threshold:20,smoothness:3,minLength:5,lineHeight:2,lineWidth:0.6,baseThickness:0.5,baseScale:1.05,denoise:0,enhance:0,printW:100,printH:100,genBase:true,edge:false,genFrame:false,frameShape:'rect',frameMargin:2};
+let P={threshold:20,smoothness:3,minLength:5,lineHeight:2,lineWidth:0.6,baseThickness:0.5,baseScale:1.05,denoise:0,enhance:0,printW:100,printH:100,genBase:true,edge:false};
 
 ['threshold','smoothness','minLength','lineHeight','lineWidth','baseThick'].forEach((id,i)=>{
   const k=Object.keys(P)[i],lb=['threshVal','smoothVal','minLenVal','heightVal','widthVal','baseVal'][i],
@@ -181,8 +161,6 @@ $('denoise').addEventListener('input',()=>{P.denoise=+$('denoise').value;$('deno
 $('enhance').addEventListener('input',()=>{P.enhance=+$('enhance').value;$('enhanceVal').textContent=$('enhance').value;debounceRebuild()});
 $('genBase').addEventListener('change',()=>{P.genBase=$('genBase').checked;debounceRebuild()});
 $('edgeDetect').addEventListener('change',()=>{P.edge=$('edgeDetect').checked;debounceRebuild()});
-$('genFrame').addEventListener('change',()=>{P.genFrame=$('genFrame').checked;$('frameShape').disabled=!P.genFrame;debounceRebuild()});
-$('frameShape').addEventListener('change',()=>{P.frameShape=$('frameShape').value;debounceRebuild()});
 
 function debounceRebuild(){clearTimeout(rebDeb);rebDeb=setTimeout(()=>{if(OI)go(OI)},300)}
 
@@ -197,7 +175,7 @@ $('fileInput').addEventListener('change',e=>{
 const WK=new Blob([`
 self.onmessage=function(e){
   try{
-    const {px,w,h,th,sm,ml,lh,lr,bt,bs,dn,SN,gb,ed,fr,frShape,frMargin}=e.data;
+    const {px,w,h,th,sm,ml,lh,lr,bt,bs,dn,SN,gb,ed}=e.data;
     const g=new Float32Array(w*h);
     for(let i=0;i<w*h;i++)g[i]=px[i*4]*0.299+px[i*4+1]*0.587+px[i*4+2]*0.114;
     // Box blur on grayscale for anti-aliasing (smooths edge transitions)
@@ -306,43 +284,6 @@ self.onmessage=function(e){
         TAF.push([b2,b3,t3],[b2,t3,t2],[b3,b0,t0],[b3,t0,t3]);
       }
     }
-    // --- Build frame (outer border) ---
-    if(fr&&out.length>0){
-      let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-      for(const c of out)for(const p of c.pts){
-        const x=(p[0]+.5)*sx-hw,y=-((p[1]+.5)*sy-hh);
-        if(x<minX)minX=x;if(y<minY)minY=y;if(x>maxX)maxX=x;if(y>maxY)maxY=y;
-      }
-      const margin=frMargin||lr*2;
-      const frW=lr;
-      function addBar(ax,ay,bx,by){
-        const dx=bx-ax,dy=by-ay,dl=Math.sqrt(dx*dx+dy*dy)||1;
-        const px=-dy/dl*frW,py=dx/dl*frW;
-        const vS=TVO;
-        TAV.push(ax-px,ay-py,0,ax+px,ay+py,0,bx+px,by+py,0,bx-px,by-py,0);
-        TAV.push(ax-px,ay-py,lh,ax+px,ay+py,lh,bx+px,by+py,lh,bx-px,by-py,lh);
-        TVO+=8;
-        const b0=vS,b1=vS+1,b2=vS+2,b3=vS+3,t0=vS+4,t1=vS+5,t2=vS+6,t3=vS+7;
-        TAF.push([b0,b1,b2],[b0,b2,b3],[t0,t3,t2],[t0,t2,t1]);
-        TAF.push([b0,b1,t1],[b0,t1,t0],[b1,b2,t2],[b1,t2,t1]);
-        TAF.push([b2,b3,t3],[b2,t3,t2],[b3,b0,t0],[b3,t0,t3]);
-      }
-      if(frShape==='rect'){
-        minX-=margin;minY-=margin;maxX+=margin;maxY+=margin;
-        addBar(minX,minY,maxX,minY);
-        addBar(maxX,minY,maxX,maxY);
-        addBar(maxX,maxY,minX,maxY);
-        addBar(minX,maxY,minX,minY);
-      }else{
-        const cx=(minX+maxX)/2,cy=(minY+maxY)/2;
-        const r=Math.max(maxX-minX,maxY-minY)/2+margin;
-        const segs=48;
-        for(let i=0;i<segs;i++){
-          const a1=2*Math.PI*i/segs,a2=2*Math.PI*(i+1)/segs;
-          addBar(cx+r*Math.cos(a1),cy+r*Math.sin(a1),cx+r*Math.cos(a2),cy+r*Math.sin(a2));
-        }
-      }
-    }
     // --- Build base from contour chains (render + dilate + trace) ---
     const BAV=[],BAF=[];let hasBase=false;
     if(gb&&bt>0&&out.length>0){
@@ -369,20 +310,6 @@ self.onmessage=function(e){
           stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
         }
       }
-      // Fill internal holes: any zero region not touching border → fill it
-      const vis2=new Uint8Array(w*h);
-      for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
-        if(!filled[y*w+x]&&!vis2[y*w+x]){
-          const comp=[],stk=[[x,y]];vis2[y*w+x]=1;let border=false;
-          while(stk.length){
-            const[cx,cy]=stk.pop();comp.push([cx,cy]);
-            if(cx<=0||cx>=w-1||cy<=0||cy>=h-1)border=true;
-            for(const[nx,ny]of[[cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]])
-              if(nx>=0&&nx<w&&ny>=0&&ny<h&&!filled[ny*w+nx]&&!vis2[ny*w+nx]){vis2[ny*w+nx]=1;stk.push([nx,ny]);}
-          }
-          if(!border)for(const[px,py]of comp)filled[py*w+px]=1;
-        }
-      }
       if(fx>=0){
         const dup=new Uint8Array(filled);
         const chain=traceMoore(dup,w,h,fx,fy);
@@ -395,7 +322,6 @@ self.onmessage=function(e){
           for(const p of fp)BAV.push(p[0],p[1],0);
           for(const p of fp)BAV.push(p[0],p[1],bz);
           const tris=triangulate(fp);
-          if(fp.length>n)fp.pop(); // remove centroid from fallback
           for(const t of tris)BAF.push([t[0],t[1],t[2]]);
           for(const t of tris)BAF.push([t[2]+n,t[1]+n,t[0]+n]);
           for(let i=0;i<n;i++){const j=(i+1)%n;BAF.push([i,i+n,j+n],[i,j+n,j]);}
@@ -455,15 +381,7 @@ function triangulate(p){
       }
       if(isEar){tris.push([prev,curr,next]);idx.splice(i,1);found=true;break}
     }
-    if(!found){
-      // Fallback: fan triangulation from centroid (handles any simple polygon)
-      const cx=idx.reduce((s,i)=>s+p[i][0],0)/idx.length;
-      const cy=idx.reduce((s,i)=>s+p[i][1],0)/idx.length;
-      const ci=p.length;
-      p.push([cx,cy]);
-      for(let i=0;i<idx.length;i++){const j=(i+1)%idx.length;tris.push([ci,idx[i],idx[j]]);}
-      break;
-    }
+    if(!found)break;
   }
   if(idx.length===3)tris.push([idx[0],idx[1],idx[2]]);
   return tris;
@@ -752,11 +670,10 @@ function go(I){
     $('edgeCanvas').getContext('2d').putImageData(ei,0,0);
     bld(pos,nor,basePos,baseNor,allVerts,allFaces,nc,hasBase,rawComp,rawContours);
     const sc=$('statChip');
-    sc.textContent=`\u8f6e\u5ed3 ${nc} \u00b7 \u7ec4\u4ef6 ${rawComp}`;
+    sc.textContent=`\u8f6e\u5ed3 ${nc} · \u7ec4\u4ef6 ${rawComp}`;
     sc.classList.add('show');
   };
-  const pxCopy=new Uint8Array(src.data.length);pxCopy.set(src.data);
-  WKR.postMessage({px:pxCopy,w,h,th:P.threshold,sm:P.smoothness,ml:P.minLength,lh:P.lineHeight,lr:P.lineWidth/2,bt:P.baseThickness,bs:P.baseScale,dn:P.denoise,SN:12,gb:P.genBase,ed:P.edge,fr:P.genFrame,frShape:P.frameShape,frMargin:P.frameMargin});
+  WKR.postMessage({px:new Uint8Array(src.data.buffer),w,h,th:P.threshold,sm:P.smoothness,ml:P.minLength,lh:P.lineHeight,lr:P.lineWidth/2,bt:P.baseThickness,bs:P.baseScale,dn:P.denoise,SN:12,gb:P.genBase,ed:P.edge},[src.data.buffer]);
 }
 
 function calcScale(){

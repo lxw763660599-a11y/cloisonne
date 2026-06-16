@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>掐丝珐琅 STL</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#1a1a2e;color:#e0e0e0;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:10px}
+.container{width:100%;max-width:600px}
+h1{text-align:center;font-size:1.15rem;font-weight:600;margin:4px 0 8px;background:linear-gradient(135deg,#d4a574,#e8c9a0);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.upload-zone{background:rgba(255,255,255,0.04);border:2px dashed rgba(212,167,116,0.4);border-radius:14px;padding:22px 14px;text-align:center;cursor:pointer;transition:all 0.3s}
+.upload-zone:active{transform:scale(0.98)}
+.upload-zone.has-image{padding:8px;border-style:solid}
+.upload-icon{font-size:1.8rem;opacity:0.5}
+.upload-text{font-size:0.8rem;opacity:0.45;margin-top:3px}
+.preview-section{display:none;margin-top:10px}
+.preview-section.show{display:block}
+.preview-row{display:flex;gap:8px}
+.preview-box{flex:1;min-width:120px;background:rgba(255,255,255,0.04);border-radius:10px;padding:4px;text-align:center}
+.preview-box .label{font-size:0.58rem;opacity:0.35;margin-bottom:2px;text-transform:uppercase;letter-spacing:1px}
+.preview-box canvas{width:100%;border-radius:6px;background:#0d0d1a}
+.controls{margin-top:10px;background:rgba(255,255,255,0.04);border-radius:12px;padding:10px 12px}
+.control-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;gap:10px}
+.control-row:last-child{margin-bottom:0}
+.control-label{font-size:0.72rem;opacity:0.55;white-space:nowrap}
+.control-row input[type=range]{flex:1;-webkit-appearance:none;height:3px;border-radius:2px;background:rgba(212,167,116,0.25);outline:none}
+.control-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#d4a574;cursor:pointer;border:2px solid #1a1a2e}
+.control-value{font-size:0.72rem;min-width:36px;text-align:right;opacity:0.65}
+.model-preview{margin-top:10px;background:rgba(255,255,255,0.04);border-radius:12px;overflow:hidden;height:250px;position:relative}
+.model-preview canvas{width:100%;height:100%;display:block}
+.model-preview .hint{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);font-size:0.55rem;opacity:0.25}
+.loading-overlay{position:absolute;inset:0;background:rgba(26,26,46,0.88);display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;z-index:10}
+.loading-overlay.show{display:flex}
+.spinner{width:30px;height:30px;border:3px solid rgba(212,167,116,0.15);border-top-color:#d4a574;border-radius:50%;animation:spin 0.7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:0.75rem;color:rgba(212,167,116,0.7)}
+.btn-row{display:flex;gap:8px;margin-top:10px}
+.btn{flex:1;padding:11px;border:none;border-radius:10px;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.2s}
+.btn:active{transform:scale(0.96)}
+.btn-primary{background:linear-gradient(135deg,#d4a574,#b8860b);color:#1a1a2e}
+.btn-secondary{background:rgba(255,255,255,0.05);color:#d4a574;border:1px solid rgba(212,167,116,0.25)}
+.toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:rgba(26,26,46,0.95);color:#d4a574;border:1px solid rgba(212,167,116,0.3);padding:9px 18px;border-radius:18px;font-size:0.78rem;font-weight:600;z-index:100;opacity:0;pointer-events:none;transition:opacity 0.3s}
+.toast.show{opacity:1}
+#fileInput{display:none}
+</style>
+</head>
+<body>
+<div class="container"><h1>掐丝珐琅 · STL 生成</h1>
+<div class="upload-zone" id="uploadZone" onclick="$('fileInput').click()"><div class="upload-icon" id="uploadIcon">⬆</div><div class="upload-text" id="uploadText">点击上传 JPG / PNG</div></div>
+<input type="file" id="fileInput" accept="image/*">
+<div class="preview-section" id="previewSection">
+<div class="preview-row"><div class="preview-box"><div class="label">原图</div><canvas id="origCanvas"></canvas></div><div class="preview-box"><div class="label">轮廓</div><canvas id="edgeCanvas"></canvas></div></div>
+<div class="controls">
+<div class="control-row"><span class="control-label">边缘阈值</span><input type="range" id="threshold" min="8" max="80" value="30"><span class="control-value" id="threshVal">30</span></div>
+<div class="control-row"><span class="control-label">平滑度</span><input type="range" id="smoothness" min="0" max="8" value="3"><span class="control-value" id="smoothVal">3</span></div>
+<div class="control-row"><span class="control-label">最短线条</span><input type="range" id="minLength" min="0" max="40" value="8"><span class="control-value" id="minLenVal">8px</span></div>
+<div class="control-row"><span class="control-label">线条高度</span><input type="range" id="lineHeight" min="0.3" max="5" step="0.1" value="1.5"><span class="control-value" id="heightVal">1.5mm</span></div>
+<div class="control-row"><span class="control-label">线条宽度</span><input type="range" id="lineWidth" min="0.2" max="3" step="0.1" value="0.6"><span class="control-value" id="widthVal">0.6mm</span></div>
+<div class="control-row"><span class="control-label">底板厚度</span><input type="range" id="baseThick" min="0" max="3" step="0.1" value="0.5"><span class="control-value" id="baseVal">0.5mm</span></div>
+</div>
+<div class="model-preview" id="modelPreview"><canvas id="threeCanvas"></canvas><div class="loading-overlay" id="loading"><div class="spinner"></div><div class="loading-text">处理中…</div></div><div class="hint">拖拽旋转 · 滚轮缩放</div></div>
+<div class="btn-row"><button class="btn btn-secondary" onclick="rebuild()">刷新预览</button><button class="btn btn-primary" onclick="exportSTL()">导出 STL</button></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let OI,SC,SR,CAM,MSH,CP,BS=100;
+let P={threshold:30,smoothness:3,minLength:8,lineHeight:1.5,lineWidth:0.6,baseThickness:0.5};
+
+['threshold','smoothness','minLength','lineHeight','lineWidth','baseThick'].forEach((id,i)=>{
+  const k=Object.keys(P)[i],l=['threshVal','smoothVal','minLenVal','heightVal','widthVal','baseVal'][i];
+  $(id).addEventListener('input',()=>{P[k]=+$(id).value;$(l).textContent=$(id).value+(id==='minLength'?'px':id>=3?['mm','mm','mm'][id-3]:'')});
+});
+
+$('fileInput').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const R=new FileReader();
+  R.onload=ev=>{const I=new Image();I.onload=()=>{OI=I;showImg(I);go(I);$('uploadZone').classList.add('has-image');$('uploadIcon').textContent='🖼';$('uploadText').textContent='点击更换';$('previewSection').classList.add('show');init3()};I.src=ev.target.result};
+  R.readAsDataURL(f);
+});
+
+function showImg(I){const m=240,s=Math.min(1,m/Math.max(I.width,I.height));$('origCanvas').width=I.width*s;$('origCanvas').height=I.height*s;$('origCanvas').getContext('2d').drawImage(I,0,0,$('origCanvas').width,$('origCanvas').height)}
+
+// === Worker: Adaptive Threshold + Zhang-Suen Skeleton + Line Tracing ===
+const WK=new Blob([`
+self.onmessage=function(e){
+  try{
+    const {px,w,h,th,sm,ml}=e.data;
+    const g=new Float32Array(w*h);
+    for(let i=0;i<w*h;i++)g[i]=px[i*4]*0.299+px[i*4+1]*0.587+px[i*4+2]*0.114;
+    const bin=adaptive(g,w,h,th/100*255,21);
+    const skel=skeletonize(bin,w,h,50);
+    let skelPixels=0;for(let i=0;i<w*h;i++)if(skel[i])skelPixels++;
+    const traceSrc=(skelPixels>0)?skel:bin;
+    const contours=traceLines(traceSrc,w,h,ml);
+    const out=[];
+    for(const c of contours){
+      let s=dp(c,sm*0.25+0.2);
+      if(s.length>=2)s=cr(s,4);
+      if(s.length>=3)out.push(s);
+    }
+    postMessage({contours:out,bin:skel,w,h});
+  }catch(err){postMessage({error:err.message});}
+};
+
+function adaptive(g,w,h,th,bs){
+  const o=new Uint8Array(w*h),hf=bs>>1;
+  const it=new Float64Array((w+1)*(h+1));
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y+1)*(w+1)+(x+1);it[i]=g[y*w+x]+it[(y+1)*(w+1)+x]+it[y*(w+1)+(x+1)]-it[y*(w+1)+x]}
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const x1=Math.max(0,x-hf),y1=Math.max(0,y-hf),x2=Math.min(w-1,x+hf),y2=Math.min(h-1,y+hf);
+    const a=(x2-x1+1)*(y2-y1+1),s=it[(y2+1)*(w+1)+(x2+1)]-it[y1*(w+1)+(x2+1)]-it[(y2+1)*(w+1)+x1]+it[y1*(w+1)+x1];
+    o[y*w+x]=g[y*w+x]<s/a-th*0.35?1:0;
+  }
+  return o;
+}
+
+// Zhang-Suen skeletonization
+function skeletonize(bin,w,h,maxIter){
+  const out=new Uint8Array(bin);
+  let changed=true,iter=0;
+  while(changed&&iter<maxIter){
+    changed=false;iter++;
+    // Step 1
+    const m1=[];for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+      if(!out[y*w+x])continue;
+      const p2=out[(y-1)*w+x],p3=out[(y-1)*w+x+1],p4=out[y*w+x+1],
+            p5=out[(y+1)*w+x+1],p6=out[(y+1)*w+x],p7=out[(y+1)*w+x-1],
+            p8=out[y*w+x-1],p9=out[(y-1)*w+x-1];
+      const n=p2+p3+p4+p5+p6+p7+p8+p9;
+      if(n<2||n>6)continue;
+      let t=0;if(!p2&&p3)t++;if(!p3&&p4)t++;if(!p4&&p5)t++;if(!p5&&p6)t++;if(!p6&&p7)t++;if(!p7&&p8)t++;if(!p8&&p9)t++;if(!p9&&p2)t++;
+      if(t!==1)continue;
+      if(p2*p4*p6>0)continue;
+      if(p4*p6*p8>0)continue;
+      m1.push(y*w+x);
+    }
+    for(const i of m1){out[i]=0;changed=true}
+    // Step 2
+    const m2=[];for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+      if(!out[y*w+x])continue;
+      const p2=out[(y-1)*w+x],p3=out[(y-1)*w+x+1],p4=out[y*w+x+1],
+            p5=out[(y+1)*w+x+1],p6=out[(y+1)*w+x],p7=out[(y+1)*w+x-1],
+            p8=out[y*w+x-1],p9=out[(y-1)*w+x-1];
+      const n=p2+p3+p4+p5+p6+p7+p8+p9;
+      if(n<2||n>6)continue;
+      let t=0;if(!p2&&p3)t++;if(!p3&&p4)t++;if(!p4&&p5)t++;if(!p5&&p6)t++;if(!p6&&p7)t++;if(!p7&&p8)t++;if(!p8&&p9)t++;if(!p9&&p2)t++;
+      if(t!==1)continue;
+      if(p2*p4*p8>0)continue;
+      if(p2*p6*p8>0)continue;
+      m2.push(y*w+x);
+    }
+    for(const i of m2){out[i]=0;changed=true}
+  }
+  return out;
+}
+
+// Trace skeleton into polylines
+function traceLines(skel,w,h,minLen){
+  const vis=new Uint8Array(w*h),res=[];
+  const d8=[-w-1,-w,-w+1,1,w+1,w,w-1,-1];
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const i=y*w+x;
+    if(!skel[i]||vis[i])continue;
+    let nc=0;for(let d=0;d<8;d++){const ni=i+d8[d];if(ni>=0&&ni<w*h&&skel[ni])nc++}
+    if(nc===0)continue;
+    // Trace connected skeleton
+    const pts=[[x,y]];vis[i]=1;
+    // Expand in both directions from endpoints
+    let heads=[[x,y,i]];
+    for(let iter=0;iter<w*h&&heads.length>0;iter++){
+      const nh=[];
+      for(const [hx,hy,hi] of heads){
+        for(let d=0;d<8;d++){
+          const ni=hi+d8[d];
+          if(ni>=0&&ni<w*h&&skel[ni]&&!vis[ni]){
+            vis[ni]=1;const nx=ni%w,ny=Math.floor(ni/w);
+            pts.push([nx,ny]);nh.push([nx,ny,ni]);
+          }
+        }
+      }
+      if(nh.length===0)break;
+      heads=nh;
+    }
+    if(pts.length>=minLen)res.push(pts);
+  }
+  return res;
+}
+
+function dp(pts,eps){
+  if(pts.length<=2)return pts;
+  let md=0,mi=0;
+  const a=pts[0],b=pts[pts.length-1],dx=b[0]-a[0],dy=b[1]-a[1],l2=dx*dx+dy*dy;
+  if(l2===0){for(let i=1;i<pts.length-1;i++){const d=Math.hypot(pts[i][0]-a[0],pts[i][1]-a[1]);if(d>md){md=d;mi=i}}}
+  else{for(let i=1;i<pts.length-1;i++){const d=Math.abs(dy*pts[i][0]-dx*pts[i][1]+b[0]*a[1]-b[1]*a[0])/Math.sqrt(l2);if(d>md){md=d;mi=i}}}
+  if(md>eps){const l=dp(pts.slice(0,mi+1),eps),r=dp(pts.slice(mi),eps);return l.slice(0,-1).concat(r)}
+  return [a,b];
+}
+function cr(pts,n){
+  if(pts.length<2)return pts;
+  if(pts.length===2){const r=[];for(let i=0;i<=n;i++){const t=i/n;r.push([pts[0][0]+(pts[1][0]-pts[0][0])*t,pts[0][1]+(pts[1][1]-pts[0][1])*t])}return r}
+  const pp=[pts[0],...pts,pts[pts.length-1]],m=pp.length-3,res=[];
+  for(let i=0;i<m;i++){const p0=pp[i],p1=pp[i+1],p2=pp[i+2],p3=pp[i+3],st=i===m-1?n+1:n;for(let j=0;j<st;j++){const t=j/n,t2=t*t,t3=t2*t;res.push([.5*(2*p1[0]+(-p0[0]+p2[0])*t+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3),.5*(2*p1[1]+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3)])}}
+  return res;
+}
+`],{type:'application/javascript'});
+let WKR;
+function go(I){
+  const D=2000;let w=I.width,h=I.height;
+  const s=Math.min(1,D/Math.max(w,h));w=Math.round(w*s);h=Math.round(h*s);
+  const C=document.createElement('canvas');C.width=w;C.height=h;
+  C.getContext('2d').drawImage(I,0,0,w,h);
+  const src=C.getContext('2d').getImageData(0,0,w,h);
+  $('loading').classList.add('show');
+  if(!WKR){WKR=new Worker(URL.createObjectURL(WK));WKR.onerror=e=>{toast('Worker异常');$('loading').classList.remove('show')};}
+  WKR.onmessage=e=>{
+    $('loading').classList.remove('show');
+    if(e.data.error){toast('错误: '+e.data.error);return}
+    const {contours,bin}=e.data;
+    $('edgeCanvas').width=w;$('edgeCanvas').height=h;
+    const ei=new ImageData(w,h);
+    for(let i=0;i<w*h;i++){const v=bin[i]?0:255;ei.data[i*4]=v;ei.data[i*4+1]=v;ei.data[i*4+2]=v;ei.data[i*4+3]=255}
+    $('edgeCanvas').getContext('2d').putImageData(ei,0,0);
+    $('edgeCanvas').style.width=Math.min(240,w)+'px';$('edgeCanvas').style.height=Math.min(240,h)+'px';
+    bld(contours,w,h);
+  };
+  WKR.postMessage({px:new Uint8Array(src.data.buffer),w,h,th:P.threshold,sm:P.smoothness,ml:P.minLength},[src.data.buffer]);
+}
+
+function bld(contours,w,h){
+  if(!SC||!contours||!contours.length){toast('未检测到有效轮廓');return}
+  if(MSH)SC.remove(MSH);
+  const sx=BS/w,sy=BS/h,hw=BS/2,hh=BS/2,lh=P.lineHeight,lr=P.lineWidth/2,SN=12;
+  const AV=[],AF=[];let VO=0;
+  for(const pts of contours){
+    const n=pts.length,fp=pts.map(pt=>[(pt[0]+.5)*sx-hw,-((pt[1]+.5)*sy-hh)]);
+    for(let i=0;i<n;i++){
+      let tx,ty;
+      if(i===0){tx=fp[1][0]-fp[i][0];ty=fp[1][1]-fp[i][1]}
+      else if(i===n-1){tx=fp[i][0]-fp[i-1][0];ty=fp[i][1]-fp[i-1][1]}
+      else{tx=fp[i+1][0]-fp[i-1][0];ty=fp[i+1][1]-fp[i-1][1]}
+      const tl=Math.sqrt(tx*tx+ty*ty)||1;tx/=tl;ty/=tl;
+      const nx=-ty,ny=tx;
+      for(let j=0;j<=1;j++){const z=j*lh;for(let k=0;k<SN;k++){const a=k/SN*Math.PI*2;AV.push(fp[i][0]+nx*Math.cos(a)*lr,fp[i][1]+ny*Math.cos(a)*lr,z)}}
+    }
+    for(let i=0;i<n-1;i++)for(let k=0;k<SN;k++){
+      const k2=(k+1)%SN,b0=i*SN*2+k,b1=i*SN*2+k2,t0=i*SN*2+SN+k,t1=i*SN*2+SN+k2;
+      const nb0=(i+1)*SN*2+k,nb1=(i+1)*SN*2+k2,nt0=(i+1)*SN*2+SN+k,nt1=(i+1)*SN*2+SN+k2;
+      AF.push([b0+VO,b1+VO,nb1+VO],[b0+VO,nb1+VO,nb0+VO],[t0+VO,t1+VO,nt1+VO],[t0+VO,nt1+VO,nt0+VO],[b0+VO,t0+VO,nt0+VO],[b0+VO,nt0+VO,nb0+VO]);
+    }
+    VO+=n*SN*2;
+  }
+  if(P.baseThickness>0){
+    const bt=P.baseThickness,bz=-bt;
+    const BV=[-hw,-hh,bz,hw,-hh,bz,hw,hh,bz,-hw,hh,bz,-hw,-hh,0,hw,-hh,0,hw,hh,0,-hw,hh,0];
+    const BF=[[0,1,2],[0,2,3],[4,6,5],[4,7,6],[0,4,5],[0,5,1],[1,5,6],[1,6,2],[2,6,7],[2,7,3],[3,7,4],[3,4,0]];
+    AV.push(...BV);for(const f of BF)AF.push([f[0]+VO,f[1]+VO,f[2]+VO]);
+  }
+  const geo=new THREE.BufferGeometry();
+  const pos=new Float32Array(AF.length*9),nor=new Float32Array(AF.length*9);let pi=0;
+  for(const f of AF){
+    const a=f[0]*3,b=f[1]*3,c=f[2]*3;
+    const ax=AV[a],ay=AV[a+1],az=AV[a+2],bx=AV[b],by=AV[b+1],bz=AV[b+2],cx=AV[c],cy=AV[c+1],cz=AV[c+2];
+    pos[pi]=ax;pos[pi+1]=ay;pos[pi+2]=az;pos[pi+3]=bx;pos[pi+4]=by;pos[pi+5]=bz;pos[pi+6]=cx;pos[pi+7]=cy;pos[pi+8]=cz;
+    const ux=bx-ax,uy=by-ay,uz=bz-az,vx=cx-ax,vy=cy-ay,vz=cz-az;
+    let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
+    const nl=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;
+    for(let j=0;j<3;j++){nor[pi+j*3]=nx/nl;nor[pi+j*3+1]=ny/nl;nor[pi+j*3+2]=nz/nl}
+    pi+=9;
+  }
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('normal',new THREE.BufferAttribute(nor,3));
+  geo.computeBoundingSphere();
+  MSH=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0xd4a574,metalness:0.9,roughness:0.28}));
+  SC.add(MSH);MSH.userData={allVerts:AV,allFaces:AF};CP={allVerts:AV,allFaces:AF};
+  toast('生成 '+contours.length+' 条轮廓');
+}
+
+function init3(){
+  if(SR)return;
+  const box=$('modelPreview'),w=box.clientWidth,h=box.clientHeight;
+  SR=new THREE.WebGLRenderer({canvas:$('threeCanvas'),antialias:true,alpha:true});
+  SR.setSize(w,h);SR.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  SC=new THREE.Scene();
+  CAM=new THREE.PerspectiveCamera(45,w/h,.1,1000);
+  CAM.position.set(BS*.8,BS*.5,BS*1.2);CAM.lookAt(0,0,0);
+  SC.add(new THREE.AmbientLight(0x404060,2));
+  const k=new THREE.DirectionalLight(0xffffff,3);k.position.set(1,1.5,1);SC.add(k);
+  const f=new THREE.DirectionalLight(0x8899cc,1.5);f.position.set(-.8,.3,-.5);SC.add(f);
+  const r=new THREE.DirectionalLight(0xd4a574,1.5);r.position.set(0,-.3,1);SC.add(r);
+  const g=new THREE.GridHelper(BS*1.4,20,0x333355,0x222244);g.position.z=-.6;SC.add(g);
+  setupM();animate();
+}
+function setupM(){
+  const box=$('modelPreview');let dn=false,px=0,py=0,rx=0,ry=0,zm=1,lD=0;
+  box.addEventListener('pointerdown',e=>{dn=true;px=e.clientX;py=e.clientY});
+  window.addEventListener('pointermove',e=>{if(!dn||!MSH)return;ry+=(e.clientX-px)*.005;rx+=(e.clientY-py)*.005;px=e.clientX;py=e.clientY;rx=Math.max(-Math.PI/3,Math.min(Math.PI/3,rx));MSH.rotation.set(rx,ry,0)});
+  window.addEventListener('pointerup',()=>{dn=false});
+  box.addEventListener('wheel',e=>{e.preventDefault();zm+=e.deltaY*-.001;zm=Math.max(.3,Math.min(3,zm));CAM.position.set(BS*.8*zm,BS*.5*zm,BS*1.2*zm);CAM.lookAt(0,0,0)},{passive:false});
+  box.addEventListener('touchstart',e=>{if(e.touches.length===2)lD=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY)});
+  box.addEventListener('touchmove',e=>{if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);zm+=(d-lD)*-.002;zm=Math.max(.3,Math.min(3,zm));lD=d;CAM.position.set(BS*.8*zm,BS*.5*zm,BS*1.2*zm);CAM.lookAt(0,0,0)}});
+}
+function animate(){requestAnimationFrame(animate);if(SR)SR.render(SC,CAM)}
+window.addEventListener('resize',()=>{if(!SR)return;const w=$('modelPreview').clientWidth,h=$('modelPreview').clientHeight;SR.setSize(w,h);CAM.aspect=w/h;CAM.updateProjectionMatrix()});
+
+function rebuild(){if(OI)go(OI)}
+
+function exportSTL(){
+  if(!CP||!CP.allVerts||!CP.allVerts.length){toast('请先生成模型');return}
+  const {allVerts,allFaces}=CP,nt=allFaces.length;
+  const buf=new ArrayBuffer(84+50*nt),dv=new DataView(buf);
+  const h=new Uint8Array(buf,0,80);const ht='Cloisonne STL';for(let i=0;i<ht.length;i++)h[i]=ht.charCodeAt(i);
+  dv.setUint32(80,nt,true);let o=84;
+  for(const f of allFaces){
+    const a=f[0]*3,b=f[1]*3,c=f[2]*3;
+    const ax=allVerts[a],ay=allVerts[a+1],az=allVerts[a+2],bx=allVerts[b],by=allVerts[b+1],bz=allVerts[b+2],cx=allVerts[c],cy=allVerts[c+1],cz=allVerts[c+2];
+    const ux=bx-ax,uy=by-ay,uz=bz-az,vx=cx-ax,vy=cy-ay,vz=cz-az;
+    let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
+    const nl=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;
+    dv.setFloat32(o,nx/nl,true);o+=4;dv.setFloat32(o,ny/nl,true);o+=4;dv.setFloat32(o,nz/nl,true);o+=4;
+    [ax,ay,az,bx,by,bz,cx,cy,cz].forEach(v=>{dv.setFloat32(o,v,true);o+=4});
+    dv.setUint16(o,0,true);o+=2;
+  }
+  const blob=new Blob([buf],{type:'application/octet-stream'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='cloisonne.stl';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  toast('STL 已导出');
+}
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2000)}
+</script>
+</body>
+</html>
