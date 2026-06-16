@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>掐丝珐琅 STL</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#05050f;--panel:rgba(12,12,30,0.7);--border:rgba(255,255,255,0.06);--accent:#00d4ff;--gold:#d4a574;--text:#a0a8c0;--text-dim:rgba(160,168,192,0.45);--text-bright:#d0d6f0;--slider-track:rgba(0,212,255,0.08);--slider-fill:rgba(0,212,255,0.3);--danger:#ff5c72;--radius:8px;--radius-sm:4px;--tip-bg:rgba(5,5,15,0.96);--tip-color:#d0d6f0;--tip-border:rgba(0,212,255,0.15);--tip-shadow:0 4px 16px rgba(0,0,0,0.5)}
+[data-theme="light"]{--bg:#dfe3ea;--panel:rgba(248,248,250,0.88);--border:rgba(0,0,0,0.08);--accent:#0066cc;--gold:#b8860b;--text:#444;--text-dim:rgba(0,0,0,0.35);--text-bright:#111;--slider-track:rgba(0,0,0,0.06);--slider-fill:rgba(0,102,204,0.22);--danger:#d63031;--tip-bg:rgba(255,255,255,0.98);--tip-color:#222;--tip-border:rgba(0,0,0,0.12);--tip-shadow:0 4px 16px rgba(0,0,0,0.08)}
+[data-theme="light"] body::before{background-image:linear-gradient(rgba(0,0,0,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.03) 1px,transparent 1px)}
+[data-theme="light"] .upload-zone{background:rgba(0,102,204,0.04);border-color:rgba(0,102,204,0.25);color:var(--accent)}
+[data-theme="light"] .toast{background:rgba(255,255,255,0.95);color:var(--accent);border-color:rgba(0,102,204,0.2)}
+[data-theme="light"] .loading-overlay{background:rgba(255,255,255,0.88)}
+[data-theme="light"] .edge-section{background:#ddd}
+[data-theme="light"] .right{background:radial-gradient(ellipse at center,rgba(0,102,204,0.02) 0%,transparent 70%)}
+[data-theme="light"] .left{background:rgba(0,0,0,0.02)}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+/* Subtle grid bg */
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.02) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.topbar{z-index:1;display:flex;align-items:center;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;gap:10px;backdrop-filter:blur(12px)}
+.topbar h1{font-size:0.9rem;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:3px;white-space:nowrap}
+.stat-chip{font-size:0.58rem;opacity:0.45;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border);display:none}
+.stat-chip.show{display:block}
+.upload-zone{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);padding:14px 28px;background:rgba(0,212,255,0.04);border:2px dashed rgba(0,212,255,0.35);border-radius:var(--radius);cursor:pointer;transition:all 0.25s;font-size:0.78rem;color:var(--accent);text-align:center;letter-spacing:1.5px;z-index:2;animation:uploadPulse 2.5s ease-in-out infinite}
+@keyframes uploadPulse{0%,100%{border-color:rgba(0,212,255,0.35);box-shadow:0 0 0 rgba(0,212,255,0)}50%{border-color:rgba(0,212,255,0.55);box-shadow:0 0 20px rgba(0,212,255,0.08)}}
+.upload-zone:hover{border-color:var(--accent);opacity:1;background:rgba(0,212,255,0.08);box-shadow:0 0 28px rgba(0,212,255,0.15);animation:none}
+.upload-zone.has-image{animation:none;border-style:solid;border-color:rgba(0,212,255,0.25);opacity:0.6;background:rgba(0,212,255,0.03);font-size:0.65rem;padding:8px 16px;color:var(--text)}
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:rgba(5,5,15,0.95);color:var(--accent);border:1px solid rgba(0,212,255,0.2);padding:9px 22px;border-radius:20px;font-size:0.75rem;font-weight:600;z-index:100;opacity:0;pointer-events:none;transition:opacity 0.3s;backdrop-filter:blur(8px);box-shadow:0 4px 20px rgba(0,212,255,0.08)}
+.toast.show{opacity:1}
+#fileInput{display:none}
+.main{display:flex;flex:1;overflow:hidden;position:relative;z-index:1;min-width:0}
+.left{width:clamp(380px,55vw,640px);flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden;background:rgba(0,0,0,0.15)}
+.edge-section{flex:1;position:relative;background:#000;overflow:hidden;border-bottom:1px solid var(--border)}
+.edge-section canvas{width:100%;height:100%;object-fit:contain}
+.edge-section .label{position:absolute;top:8px;left:10px;font-size:0.62rem;opacity:0.35;background:rgba(0,0,0,0.6);padding:3px 8px;border-radius:3px;letter-spacing:1px;text-transform:uppercase}
+.controls{background:var(--panel);padding:14px 18px;flex-shrink:0;backdrop-filter:blur(12px);overflow-y:auto;max-height:45vh;scrollbar-width:thin;scrollbar-color:rgba(0,212,255,0.1) transparent}
+.controls .section-label{font-size:0.72rem;text-transform:uppercase;letter-spacing:2px;color:var(--accent);opacity:0.6;margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid rgba(0,212,255,0.06)}
+.controls .section-label:first-child{margin-top:0}
+.controls .row{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px}
+.controls .row.single{grid-template-columns:1fr}
+.control-item{display:flex;align-items:center;gap:8px;position:relative}
+.control-item::after{content:attr(data-tooltip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--tip-bg);color:var(--tip-color);font-size:0.68rem;line-height:1.5;padding:5px 10px;border-radius:var(--radius-sm);border:1px solid var(--tip-border);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.18s,transform 0.18s;transform:translateX(-50%) translateY(4px);z-index:20;letter-spacing:0.3px;box-shadow:var(--tip-shadow)}
+.control-item:hover::after{opacity:1;transform:translateX(-50%) translateY(0)}
+.control-label{font-size:0.78rem;opacity:0.55;white-space:nowrap;min-width:56px;letter-spacing:0.3px;cursor:default}
+/* Custom slider */
+.control-item input[type=range]{flex:1;-webkit-appearance:none;height:5px;border-radius:3px;background:var(--slider-track);outline:none;position:relative}
+.control-item input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:3px}
+.control-item input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);box-shadow:0 0 8px rgba(0,212,255,0.3);transition:box-shadow 0.15s;margin-top:-6px}
+.control-item input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 16px rgba(0,212,255,0.5)}
+.control-item input[type=number]{width:60px;background:rgba(255,255,255,0.03);border:1px solid var(--border);color:var(--text-bright);border-radius:var(--radius-sm);padding:4px 6px;font-size:0.78rem;text-align:center;letter-spacing:0.5px}
+.control-item input[type=number]:focus{outline:none;border-color:rgba(0,212,255,0.3);box-shadow:0 0 6px rgba(0,212,255,0.08)}
+.control-value{font-size:0.72rem;min-width:36px;text-align:right;opacity:0.5;font-variant-numeric:tabular-nums}
+.base-toggle{display:flex;align-items:center;gap:8px;padding:7px 0;cursor:pointer;font-size:0.78rem;opacity:0.55;user-select:none;letter-spacing:0.5px;transition:opacity 0.15s}
+.base-toggle:hover{opacity:0.75}
+.base-toggle input{accent-color:var(--accent);width:14px;height:14px}
+.btn-row{display:flex;gap:10px;padding-top:10px}
+.btn{flex:1;padding:10px;border:none;border-radius:var(--radius);font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;letter-spacing:1.5px;position:relative;overflow:hidden}
+.btn:active{transform:scale(0.96)}
+.btn-primary{background:linear-gradient(135deg,var(--gold),#b8860b);color:#0a0a14;box-shadow:0 2px 12px rgba(212,167,116,0.2)}
+.btn-primary:hover{box-shadow:0 4px 20px rgba(212,167,116,0.35)}
+.btn-secondary{background:rgba(255,255,255,0.03);color:var(--accent);border:1px solid rgba(0,212,255,0.15)}
+.btn-secondary:hover{background:rgba(0,212,255,0.05);border-color:rgba(0,212,255,0.3)}
+.help-toggle{display:none}
+.help-panel{display:none}
+.th-toggle{background:none;border:1px solid var(--border);color:var(--text);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0}
+.th-toggle:hover{background:rgba(0,212,255,0.08);border-color:var(--accent)}
+.right{flex:1;position:relative;background:radial-gradient(ellipse at center,rgba(0,212,255,0.02) 0%,transparent 70%);overflow:hidden;min-width:0}
+.right canvas{width:100%;height:100%;display:block}
+.right .hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:0.58rem;opacity:0.12;pointer-events:none;letter-spacing:1px}
+.loading-overlay{position:absolute;inset:0;background:rgba(5,5,15,0.92);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:10;backdrop-filter:blur(4px)}
+.loading-overlay.show{display:flex}
+.spinner{width:32px;height:32px;border:2.5px solid rgba(0,212,255,0.08);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;box-shadow:0 0 12px rgba(0,212,255,0.15)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:0.72rem;color:rgba(0,212,255,0.4);letter-spacing:1px}
+@media(max-width:1100px){.left{width:clamp(300px,44vw,460px)}.controls .row{grid-template-columns:1fr}}
+@media(max-width:768px){.main{flex-direction:column}.left{width:100%;flex-shrink:1;max-height:50vh}.edge-section{flex:none;height:50%}.controls{max-height:25vh}.right{flex:none;height:50vh;min-height:50vh}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>赛博掐丝生成器</h1>
+  <span class="stat-chip" id="statChip"></span>
+  <div style="flex:1"></div>
+  <button class="th-toggle" id="thToggle" title="切换浅色/深色模式">☀</button>
+  <a href="https://v.douyin.com/lIuC7obwACY/" target="_blank" style="font-size:0.68rem;color:var(--gold);letter-spacing:1px;white-space:nowrap;font-weight:500;text-decoration:none">作者：抖音李玉AI</a>
+</div>
+<div class="main">
+  <!-- Left: Edge Preview + Controls -->
+  <div class="left" id="leftPanel">
+    <div class="edge-section" id="edgeSection">
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">点击上传 JPG / PNG</div>
+      <input type="file" id="fileInput" accept="image/*" style="display:none">
+      <div class="label">轮廓提取</div>
+      <canvas id="edgeCanvas"></canvas>
+    </div>
+    <div class="controls" id="controlsPanel">
+      <div class="section-label">预处理</div>
+      <div class="row">
+        <div class="control-item" data-tooltip="对模糊图片做锐化，提清晰度"><span class="control-label">图像增强</span><input type="range" id="enhance" min="0" max="3" value="0"><span class="control-value" id="enhanceVal">0</span></div>
+        <div class="control-item" data-tooltip="灰度均值模糊，消除像素阶梯锯齿"><span class="control-label">抗锯齿</span><input type="range" id="denoise" min="0" max="3" value="0"><span class="control-value" id="denoiseVal">0</span></div>
+      </div>
+      <div class="section-label">轮廓提取</div>
+      <div class="row">
+        <div class="control-item" data-tooltip="提取轮廓的敏感度。越低保留越多边缘细节（可能引入噪点），越高只保留最明显边缘"><span class="control-label">边缘阈值</span><input type="range" id="threshold" min="10" max="80" value="20"><span class="control-value" id="threshVal">20</span></div>
+        <div class="control-item" data-tooltip="线条的光滑程度。越高越圆滑但可能丢失精细转折，越低越忠实原始轮廓"><span class="control-label">平滑度</span><input type="range" id="smoothness" min="0" max="8" value="3"><span class="control-value" id="smoothVal">3</span></div>
+        <div class="control-item" data-tooltip="忽略短于此像素数的线段，用于过滤噪点和碎线"><span class="control-label">最短线条</span><input type="range" id="minLength" min="0" max="40" value="5"><span class="control-value" id="minLenVal">5px</span></div>
+        <div class="control-item" data-tooltip="掐丝铜线的垂直高度（mm），即3D管体的厚度"><span class="control-label">打印高度</span><input type="range" id="lineHeight" min="0.5" max="10" step="0.1" value="2"><span class="control-value" id="heightVal">2mm</span></div>
+        <div class="control-item" data-tooltip="掐丝铜线的粗细（mm），管体截面半径"><span class="control-label">线条宽度</span><input type="range" id="lineWidth" min="0.2" max="3" step="0.1" value="0.6"><span class="control-value" id="widthVal">0.6mm</span></div>
+      </div>
+      <div class="row">
+        <div class="control-item" data-tooltip="输出STL的物理尺寸（mm），等比缩放3D模型"><span class="control-label">打印宽度</span><input type="number" id="printW" min="10" max="500" value="100"><span class="control-value">mm</span></div>
+        <div class="control-item" data-tooltip="输出STL的物理尺寸（mm），等比缩放3D模型"><span class="control-label">打印长度</span><input type="number" id="printH" min="10" max="500" value="100"><span class="control-value">mm</span></div>
+      </div>
+      <div class="section-label">底板</div>
+      <div class="row">
+        <div class="control-item" data-tooltip="手动微调底板轮廓大小，贴合掐丝外圈"><span class="control-label">缩放</span><input type="range" id="baseScale" min="0.85" max="1.30" step="0.01" value="1.05"><span class="control-value" id="scaleVal">1.05</span></div>
+        <div class="control-item" data-tooltip="底部连接板的厚度（mm），设为0则不生成底板"><span class="control-label">厚度</span><input type="range" id="baseThick" min="0" max="5" step="0.1" value="0.5"><span class="control-value" id="baseVal">0.5mm</span></div>
+      </div>
+      <label class="base-toggle" title="勾选后在管体底部生成一块连接所有线条的底板，方便3D打印时保持结构完整">
+        <input type="checkbox" id="genBase" checked><span>生成底板</span>
+      </label>
+      <label class="base-toggle" title="非线稿图片（照片、插画等）勾选此项，自动提取边缘轮廓后再生成3D模型">
+        <input type="checkbox" id="edgeDetect"><span>照片提取边缘</span>
+      </label>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="rebuild()">刷新预览</button>
+        <button class="btn btn-primary" onclick="exportSTL()">导出 STL</button>
+      </div>
+      <div class="help-toggle" onclick="this.classList.toggle('open');$('helpPanel').classList.toggle('open')">
+        <span class="help-icon">?</span><span>参数说明</span><span class="help-arrow">▸</span>
+      </div>
+      <div class="help-panel" id="helpPanel">
+        <div class="help-item"><b>图像增强</b> 对模糊图片做锐化，提清晰度</div>
+        <div class="help-item"><b>抗锯齿</b> 灰度均值模糊，消除像素阶梯锯齿</div>
+        <div class="help-item"><b>边缘阈值</b> 提取轮廓的敏感度。数值越低保留越多的边缘细节(可能引入噪点)；数值越高只保留最明显的边缘</div>
+        <div class="help-item"><b>平滑度</b> 线条的光滑程度。数值越高线条越圆滑，但可能丢失精细转折；数值越低越忠实原始轮廓但可能带锯齿</div>
+        <div class="help-item"><b>最短线条</b> 忽略短于此像素数的线段。用于过滤轮廓图中的噪点和碎线。数值越大画面越干净但可能丢失微小细节</div>
+        <div class="help-item"><b>打印高度</b> 掐丝铜线在垂直方向上的高度(mm)，即3D管体的厚度</div>
+        <div class="help-item"><b>线条宽度</b> 掐丝铜线的粗细(mm)，管体截面半径</div>
+        <div class="help-item"><b>打印宽度/长度</b> 输出STL的物理尺寸(mm)，等比缩放3D模型</div>
+        <div class="help-item"><b>底板缩放</b> 手动微调底板轮廓大小，贴合掐丝外圈</div>
+        <div class="help-item"><b>底板厚度</b> 底部连接板的厚度(mm)。设为0则不生成底板</div>
+        <div class="help-item"><b>生成底板</b> 勾选后在管体底部生成一块连接所有线条的底板，方便3D打印时保持结构完整</div>
+      </div>
+    </div>
+  </div>
+  <!-- Right: 3D Preview -->
+  <div class="right" id="rightPanel">
+    <canvas id="threeCanvas"></canvas>
+    <div class="loading-overlay" id="loading"><div class="spinner"></div><div class="loading-text">处理中…</div></div>
+    <div class="hint">拖拽旋转 · 滚轮缩放</div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+(function(){const t=document.documentElement,b=$('thToggle');const saved=localStorage.getItem('cloisonne-theme');if(saved==='light'){t.dataset.theme='light';b.textContent='☾'}b.onclick=()=>{const isLight=t.dataset.theme==='light';if(isLight){delete t.dataset.theme;b.textContent='☀';localStorage.setItem('cloisonne-theme','dark')}else{t.dataset.theme='light';b.textContent='☾';localStorage.setItem('cloisonne-theme','light')}}})();
+let OI,SC,SR,CAM,TUBE,BASE,CP,BS=100,oiW,oiH,rebDeb;
+let P={threshold:20,smoothness:3,minLength:5,lineHeight:2,lineWidth:0.6,baseThickness:0.5,baseScale:1.05,denoise:0,enhance:0,printW:100,printH:100,genBase:true,edge:false};
+
+['threshold','smoothness','minLength','lineHeight','lineWidth','baseThick'].forEach((id,i)=>{
+  const k=Object.keys(P)[i],lb=['threshVal','smoothVal','minLenVal','heightVal','widthVal','baseVal'][i],
+    su=i<2?'':i===2?'px':['mm','mm','mm'][i-3];
+  $(id).addEventListener('input',()=>{P[k]=+$(id).value;$(lb).textContent=$(id).value+su;debounceRebuild()});
+});
+
+$('printW').addEventListener('input',()=>{P.printW=+$('printW').value;applyScale()});
+$('printH').addEventListener('input',()=>{P.printH=+$('printH').value;applyScale()});
+$('baseScale').addEventListener('input',()=>{P.baseScale=+$('baseScale').value;$('scaleVal').textContent=$('baseScale').value;debounceRebuild()});
+$('denoise').addEventListener('input',()=>{P.denoise=+$('denoise').value;$('denoiseVal').textContent=$('denoise').value;debounceRebuild()});
+$('enhance').addEventListener('input',()=>{P.enhance=+$('enhance').value;$('enhanceVal').textContent=$('enhance').value;debounceRebuild()});
+$('genBase').addEventListener('change',()=>{P.genBase=$('genBase').checked;debounceRebuild()});
+$('edgeDetect').addEventListener('change',()=>{P.edge=$('edgeDetect').checked;debounceRebuild()});
+
+function debounceRebuild(){clearTimeout(rebDeb);rebDeb=setTimeout(()=>{if(OI)go(OI)},300)}
+
+$('fileInput').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const R=new FileReader();
+  R.onload=ev=>{const I=new Image();I.onload=()=>{OI=I;oiW=I.width;oiH=I.height;go(I);$('uploadZone').classList.add('has-image');$('uploadZone').textContent='\u70b9\u51fb\u66f4\u6362\u56fe\u7247';init3()};I.src=ev.target.result};
+  R.readAsDataURL(f);
+});
+
+// === Worker ===
+const WK=new Blob([`
+self.onmessage=function(e){
+  try{
+    const {px,w,h,th,sm,ml,lh,lr,bt,bs,dn,SN,gb,ed}=e.data;
+    const g=new Float32Array(w*h);
+    for(let i=0;i<w*h;i++)g[i]=px[i*4]*0.299+px[i*4+1]*0.587+px[i*4+2]*0.114;
+    // Box blur on grayscale for anti-aliasing (smooths edge transitions)
+    if(dn>0){const tmp=new Float32Array(w*h);
+      for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0,c=0;
+        for(let dy=-dn;dy<=dn;dy++)for(let dx=-dn;dx<=dn;dx++){
+          const nx=x+dx,ny=y+dy;if(nx>=0&&nx<w&&ny>=0&&ny<h){s+=g[ny*w+nx];c++}
+        }tmp[y*w+x]=s/c;
+      }for(let i=0;i<w*h;i++)g[i]=tmp[i];
+    }
+    // Sobel edge detection for photos (Gaussian blur + gradient magnitude)
+    if(ed){
+      const blur=new Float32Array(w*h);
+      for(let i=0;i<w*h;i++)blur[i]=g[i]; // fill border with original g
+      const ks=5,kh=2,kern=[],sigma=1.4;let ksum=0;
+      for(let ky=-kh;ky<=kh;ky++)for(let kx=-kh;kx<=kh;kx++){
+        const v=Math.exp(-(kx*kx+ky*ky)/(2*sigma*sigma));kern.push(v);ksum+=v;
+      }for(let i=0;i<kern.length;i++)kern[i]/=ksum;
+      for(let y=kh;y<h-kh;y++)for(let x=kh;x<w-kh;x++){
+        let v=0,ki=0;
+        for(let ky=-kh;ky<=kh;ky++)for(let kx=-kh;kx<=kh;kx++)v+=g[(y+ky)*w+(x+kx)]*kern[ki++];
+        blur[y*w+x]=v;
+      }
+      const SX=[-1,0,1,-2,0,2,-1,0,1],SY=[-1,-2,-1,0,0,0,1,2,1];
+      for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+        let gx=0,gy=0,ki=0;
+        for(let ky=-1;ky<=1;ky++)for(let kx=-1;kx<=1;kx++){
+          const p=blur[(y+ky)*w+(x+kx)];gx+=p*SX[ki];gy+=p*SY[ki];ki++;
+        }g[y*w+x]=Math.sqrt(gx*gx+gy*gy);
+      }
+      for(let i=0;i<w;i++){g[i]=0;g[(h-1)*w+i]=0;g[(h-2)*w+i]=0;}
+      for(let y=0;y<h;y++){g[y*w]=0;g[y*w+1]=0;g[y*w+w-1]=0;g[y*w+w-2]=0;}
+    }
+    const rawBin=new Uint8Array(w*h);
+    if(ed){
+      let maxG=0;for(let i=0;i<w*h;i++)if(g[i]>maxG)maxG=g[i];
+      const edgeTh=maxG*Math.max(0.02,th/200);
+      for(let i=0;i<w*h;i++)rawBin[i]=g[i]>=edgeTh?1:0;
+    }else{
+      const ot=otsu(g,w,h);
+      const gt=Math.min(255,Math.max(1,ot*(20/th)));
+      for(let i=0;i<w*h;i++)rawBin[i]=g[i]<gt?1:0;
+    }
+    // Zhang-Suen skeletonization: extract centerlines, no merging
+    const bin=skeletonize(rawBin,w,h);
+    // Count raw white components before filtering
+    let rawComp=0;
+    {const v=new Uint8Array(w*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(bin[i]&&!v[i]){rawComp++;const q=[i];v[i]=1;while(q.length){const p=q.pop();const px=p%w,py=Math.floor(p/w);for(const[dx,dy]of[[1,0],[1,-1],[0,-1],[-1,-1],[-1,0],[-1,1],[0,1],[1,1]]){const nx=px+dx,ny=py+dy;if(nx>=0&&nx<w&&ny>=0&&ny<h){const ni=ny*w+nx;if(bin[ni]&&!v[ni]){v[ni]=1;q.push(ni)}}}}}}}
+    const contours=traceSkeleton(bin,w,h,ml);
+    const out=[];
+    for(const c of contours){
+      let s=dp(c.pts,sm*0.15+0.1);
+      if(s.length>=2)s=cr(s,4);
+      // Extend at junction ends for overlap
+      if(c.jEnd&&s.length>=2){const l=s.length-1;const dx=s[l][0]-s[l-1][0],dy=s[l][1]-s[l-1][1];const d=Math.sqrt(dx*dx+dy*dy)||1;s.push([s[l][0]+dx/d*2,s[l][1]+dy/d*2]);}
+      if(c.jStart&&s.length>=2){const dx=s[0][0]-s[1][0],dy=s[0][1]-s[1][1];const d=Math.sqrt(dx*dx+dy*dy)||1;s.unshift([s[0][0]+dx/d*2,s[0][1]+dy/d*2]);}
+      if(s.length>=2)out.push({pts:s,cid:c.cid});
+    }
+    const BS=100,scale=BS/Math.max(w,h),sx=scale,sy=scale,hw=w*scale/2,hh=h*scale/2;
+    // --- Build tube geometry ---
+    const TAV=[],TAF=[];let TVO=0;
+    for(const c of out){const pts=c.pts;
+      const n=pts.length,fp=pts.map(pt=>[(pt[0]+.5)*sx-hw,-((pt[1]+.5)*sy-hh)]);
+      if(n<2)continue;
+      const hw2=lr;
+      // Perpendicular direction at each node using angle bisector
+      const nd=[];
+      for(let i=0;i<n;i++){
+        let dx,dy;
+        if(i===0){dx=fp[1][0]-fp[0][0];dy=fp[1][1]-fp[0][1];}
+        else if(i===n-1){dx=fp[i][0]-fp[i-1][0];dy=fp[i][1]-fp[i-1][1];}
+        else{
+          const ix1=fp[i][0]-fp[i-1][0],iy1=fp[i][1]-fp[i-1][1],l1=Math.sqrt(ix1*ix1+iy1*iy1)||1;
+          const ix2=fp[i+1][0]-fp[i][0],iy2=fp[i+1][1]-fp[i][1],l2=Math.sqrt(ix2*ix2+iy2*iy2)||1;
+          dx=ix1/l1+ix2/l2; dy=iy1/l1+iy2/l2;
+        }
+        const dl=Math.sqrt(dx*dx+dy*dy)||1;
+        nd.push({ppx:-dy/dl,ppy:dx/dl}); // perpendicular = (-dy, dx)
+      }
+      // Each segment = closed bar, using bisector perpendicular at both ends
+      for(let i=0;i<n-1;i++){
+        const ax=fp[i][0],ay=fp[i][1],bx=fp[i+1][0],by=fp[i+1][1];
+        const dx=bx-ax,dy=by-ay,dl=Math.sqrt(dx*dx+dy*dy);
+        if(dl<1e-8)continue;
+        const pax=nd[i].ppx,pay=nd[i].ppy,pbx=nd[i+1].ppx,pby=nd[i+1].ppy;
+        const vS=TVO;
+        TAV.push(ax-pax*hw2,ay-pay*hw2,0, ax+pax*hw2,ay+pay*hw2,0, bx+pbx*hw2,by+pby*hw2,0, bx-pbx*hw2,by-pby*hw2,0);
+        TAV.push(ax-pax*hw2,ay-pay*hw2,lh,ax+pax*hw2,ay+pay*hw2,lh,bx+pbx*hw2,by+pby*hw2,lh,bx-pbx*hw2,by-pby*hw2,lh);
+        TVO+=8;
+        const b0=vS,b1=vS+1,b2=vS+2,b3=vS+3,t0=vS+4,t1=vS+5,t2=vS+6,t3=vS+7;
+        TAF.push([b0,b1,b2],[b0,b2,b3],[t0,t3,t2],[t0,t2,t1]);
+        TAF.push([b0,b1,t1],[b0,t1,t0],[b1,b2,t2],[b1,t2,t1]);
+        TAF.push([b2,b3,t3],[b2,t3,t2],[b3,b0,t0],[b3,t0,t3]);
+      }
+      // Closing bar for near-closed contours (gap < 3 px)
+      const ex=fp[0][0]-fp[n-1][0],ey=fp[0][1]-fp[n-1][1];
+      if(Math.sqrt(ex*ex+ey*ey)<3*sx/BS){
+        const pax=nd[n-1].ppx,pay=nd[n-1].ppy,pbx=nd[0].ppx,pby=nd[0].ppy;
+        const vS=TVO;
+        TAV.push(fp[n-1][0]-pax*hw2,fp[n-1][1]-pay*hw2,0, fp[n-1][0]+pax*hw2,fp[n-1][1]+pay*hw2,0, fp[0][0]+pbx*hw2,fp[0][1]+pby*hw2,0, fp[0][0]-pbx*hw2,fp[0][1]-pby*hw2,0);
+        TAV.push(fp[n-1][0]-pax*hw2,fp[n-1][1]-pay*hw2,lh,fp[n-1][0]+pax*hw2,fp[n-1][1]+pay*hw2,lh,fp[0][0]+pbx*hw2,fp[0][1]+pby*hw2,lh,fp[0][0]-pbx*hw2,fp[0][1]-pby*hw2,lh);
+        TVO+=8;
+        const b0=vS,b1=vS+1,b2=vS+2,b3=vS+3,t0=vS+4,t1=vS+5,t2=vS+6,t3=vS+7;
+        TAF.push([b0,b1,b2],[b0,b2,b3],[t0,t3,t2],[t0,t2,t1]);
+        TAF.push([b0,b1,t1],[b0,t1,t0],[b1,b2,t2],[b1,t2,t1]);
+        TAF.push([b2,b3,t3],[b2,t3,t2],[b3,b0,t0],[b3,t0,t3]);
+      }
+    }
+    // --- Build base from contour chains (render + dilate + trace) ---
+    const BAV=[],BAF=[];let hasBase=false;
+    if(gb&&bt>0&&out.length>0){
+      const bz=-bt;
+      // Render all contour points into a binary image
+      const cImg=new Uint8Array(w*h);
+      for(const c of out)for(const p of c.pts){
+        const ix=Math.round(p[0]),iy=Math.round(p[1]);
+        if(ix>=0&&ix<w&&iy>=0&&iy<h)cImg[iy*w+ix]=1;
+      }
+      // Dilate to bridge gaps and match tube outer edge
+      const cDil=dilate(cImg,w,h,Math.max(4,Math.floor(lr*w/BS)+Math.round(sm*0.5)+2));
+      // Flood fill to get solid interior, eliminating porosity
+      const filled=new Uint8Array(w*h);
+      let fx=-1,fy=-1;
+      for(let y=0;y<h&&fy<0;y++)for(let x=0;x<w&&fy<0;x++)if(cDil[y*w+x]){fx=x;fy=y}
+      if(fx>=0){
+        const stack=[[fx,fy]];
+        while(stack.length){
+          const [cx,cy]=stack.pop();
+          if(cx<0||cx>=w||cy<0||cy>=h)continue;
+          if(!cDil[cy*w+cx]||filled[cy*w+cx])continue;
+          filled[cy*w+cx]=1;
+          stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
+        }
+      }
+      // Fill internal holes: any zero region not touching border → fill it
+      const vis2=new Uint8Array(w*h);
+      for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+        if(!filled[y*w+x]&&!vis2[y*w+x]){
+          const comp=[],stk=[[x,y]];vis2[y*w+x]=1;let border=false;
+          while(stk.length){
+            const[cx,cy]=stk.pop();comp.push([cx,cy]);
+            if(cx<=0||cx>=w-1||cy<=0||cy>=h-1)border=true;
+            for(const[nx,ny]of[[cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]])
+              if(nx>=0&&nx<w&&ny>=0&&ny<h&&!filled[ny*w+nx]&&!vis2[ny*w+nx]){vis2[ny*w+nx]=1;stk.push([nx,ny]);}
+          }
+          if(!border)for(const[px,py]of comp)filled[py*w+px]=1;
+        }
+      }
+      if(fx>=0){
+        const dup=new Uint8Array(filled);
+        const chain=traceMoore(dup,w,h,fx,fy);
+        if(chain.length>=4){
+          const smChain=smoothChain(chain,6);
+          let bp=dp(smChain,Math.max(1.5,sm*0.35));
+          if(bp.length>=2)bp=cr(bp,Math.max(3,4));
+          const fp=bp.map(pt=>{const cx=(pt[0]+.5)*sx-hw,cy=-((pt[1]+.5)*sy-hh);return[cx*bs,cy*bs]});
+          const n=fp.length;
+          for(const p of fp)BAV.push(p[0],p[1],0);
+          for(const p of fp)BAV.push(p[0],p[1],bz);
+          const tris=triangulate(fp);
+          if(fp.length>n)fp.pop(); // remove centroid from fallback
+          for(const t of tris)BAF.push([t[0],t[1],t[2]]);
+          for(const t of tris)BAF.push([t[2]+n,t[1]+n,t[0]+n]);
+          for(let i=0;i<n;i++){const j=(i+1)%n;BAF.push([i,i+n,j+n],[i,j+n,j]);}
+          hasBase=true;
+        }
+      }
+    }
+    // Convert tube faces to pos/nor
+    function buildPosNor(AV,AF){
+      const pos=new Float32Array(AF.length*9),nor=new Float32Array(AF.length*9);let pi=0;
+      for(const f of AF){
+        const a=f[0]*3,b=f[1]*3,c=f[2]*3;
+        const ax=AV[a],ay=AV[a+1],az=AV[a+2],bx=AV[b],by=AV[b+1],bz=AV[b+2],cx=AV[c],cy=AV[c+1],cz=AV[c+2];
+        pos[pi]=ax;pos[pi+1]=ay;pos[pi+2]=az;pos[pi+3]=bx;pos[pi+4]=by;pos[pi+5]=bz;pos[pi+6]=cx;pos[pi+7]=cy;pos[pi+8]=cz;
+        const ux=bx-ax,uy=by-ay,uz=bz-az,vx=cx-ax,vy=cy-ay,vz=cz-az;
+        let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
+        const nl=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;
+        for(let j=0;j<3;j++){nor[pi+j*3]=nx/nl;nor[pi+j*3+1]=ny/nl;nor[pi+j*3+2]=nz/nl}
+        pi+=9;
+      }
+      return {pos,nor};
+    }
+    const tGeom=buildPosNor(TAV,TAF);
+    const bGeom=hasBase?buildPosNor(BAV,BAF):{pos:new Float32Array(0),nor:new Float32Array(0)};
+    // Merge for STL export: allVerts = TAV + BAV, remap BAF indices
+    const allVerts=new Float32Array(TAV.concat(...BAV));
+    const allFaces=[...TAF];
+    const tvCount=TAV.length/3;
+    for(const f of BAF)allFaces.push([f[0]+tvCount,f[1]+tvCount,f[2]+tvCount]);
+    postMessage({bin,w,h,pos:tGeom.pos,nor:tGeom.nor,basePos:bGeom.pos,baseNor:bGeom.nor,allVerts,allFaces:allFaces,nc:out.length,hasBase,rawComp,rawContours:contours.length},[
+      tGeom.pos.buffer,tGeom.nor.buffer,bGeom.pos.buffer,bGeom.nor.buffer,allVerts.buffer
+    ]);
+  }catch(err){postMessage({error:err.message});}
+};
+function triangulate(p){
+  // Ear-clipping triangulation of clockwise polygon p: [[x,y],...]
+  const n=p.length;if(n<3)return[];if(n===3)return[[0,1,2]];
+  const idx=Array.from({length:n},(_,i)=>i);
+  const tris=[];
+  function cross(ax,ay,bx,by){return ax*by-ay*bx}
+  function inTri(px,py,a,b,c){
+    const d1=cross(b[0]-a[0],b[1]-a[1],px-a[0],py-a[1]);
+    const d2=cross(c[0]-b[0],c[1]-b[1],px-b[0],py-b[1]);
+    const d3=cross(a[0]-c[0],a[1]-c[1],px-c[0],py-c[1]);
+    return (d1>=0&&d2>=0&&d3>=0)||(d1<=0&&d2<=0&&d3<=0);
+  }
+  while(idx.length>3){
+    let found=false;
+    for(let i=0;i<idx.length;i++){
+      const prev=idx[(i-1+idx.length)%idx.length],curr=idx[i],next=idx[(i+1)%idx.length];
+      const p0=p[prev],p1=p[curr],p2=p[next];
+      if(cross(p1[0]-p0[0],p1[1]-p0[1],p2[0]-p1[0],p2[1]-p1[1])>=-1e-10)continue;
+      let isEar=true;
+      for(const vi of idx){
+        if(vi===prev||vi===curr||vi===next)continue;
+        if(inTri(p[vi][0],p[vi][1],p0,p1,p2)){isEar=false;break}
+      }
+      if(isEar){tris.push([prev,curr,next]);idx.splice(i,1);found=true;break}
+    }
+    if(!found){
+      // Fallback: fan triangulation from centroid (handles any simple polygon)
+      const cx=idx.reduce((s,i)=>s+p[i][0],0)/idx.length;
+      const cy=idx.reduce((s,i)=>s+p[i][1],0)/idx.length;
+      const ci=p.length;
+      p.push([cx,cy]);
+      for(let i=0;i<idx.length;i++){const j=(i+1)%idx.length;tris.push([ci,idx[i],idx[j]]);}
+      break;
+    }
+  }
+  if(idx.length===3)tris.push([idx[0],idx[1],idx[2]]);
+  return tris;
+}
+function dilate(bin,w,h,iters){
+  let cur=new Uint8Array(bin),nxt=new Uint8Array(w*h);
+  for(let it=0;it<iters;it++){
+    nxt.fill(0);
+    for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+      if(cur[y*w+x]||cur[(y-1)*w+x-1]||cur[(y-1)*w+x]||cur[(y-1)*w+x+1]||cur[y*w+x-1]||cur[y*w+x+1]||cur[(y+1)*w+x-1]||cur[(y+1)*w+x]||cur[(y+1)*w+x+1])
+        nxt[y*w+x]=1;
+    }
+    [cur,nxt]=[nxt,cur];
+  }
+  return cur;
+}
+function erode(bin,w,h,iters){
+  let cur=new Uint8Array(bin),nxt=new Uint8Array(w*h);
+  for(let it=0;it<iters;it++){
+    nxt.fill(0);
+    for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+      if(cur[y*w+x]&&cur[(y-1)*w+x-1]&&cur[(y-1)*w+x]&&cur[(y-1)*w+x+1]&&cur[y*w+x-1]&&cur[y*w+x+1]&&cur[(y+1)*w+x-1]&&cur[(y+1)*w+x]&&cur[(y+1)*w+x+1])
+        nxt[y*w+x]=1;
+    }
+    [cur,nxt]=[nxt,cur];
+  }
+  return cur;
+}
+function close(bin,w,h,iters){return erode(dilate(bin,w,h,iters),w,h,iters);}
+function extractContours(bin,w,h,minLen){
+  // Moore-Neighbor boundary tracing on each white component
+  const vis=new Uint8Array(w*h),res=[];
+  const dir8=[[1,0],[1,-1],[0,-1],[-1,-1],[-1,0],[-1,1],[0,1],[1,1]];
+  // Collect components via BFS
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const i=y*w+x;if(!bin[i]||vis[i])continue;
+    // BFS to find component and its bounding box
+    const q=[i];vis[i]=1;let cx=x,cy=y; // top-leftmost
+    while(q.length){const p=q.pop();const px=p%w,py=Math.floor(p/w);
+      if(py<cy||(py===cy&&px<cx)){cx=px;cy=py}
+      for(const [dx,dy] of dir8){const nx=px+dx,ny=py+dy;if(nx>=0&&nx<w&&ny>=0&&ny<h){const ni=ny*w+nx;if(bin[ni]&&!vis[ni]){vis[ni]=1;q.push(ni)}}}
+    }
+    // Moore-Neighbor trace from top-leftmost pixel of this component
+    const chain=traceMoore(bin,w,h,cx,cy);
+    if(chain.length>=minLen)res.push(chain);
+  }
+  return res;
+}
+function traceMoore(bin,w,h,sx,sy){
+  // Standard Moore-Neighbor clockwise boundary tracing
+  // Direction: 0=E 1=SE 2=S 3=SW 4=W 5=NW 6=N 7=NE
+  const dx=[1,1,0,-1,-1,-1,0,1],dy=[0,1,1,1,0,-1,-1,-1];
+  const chain=[[sx,sy]];let cx=sx,cy=sy,bd=7; // start backtrack from NW
+  const maxSteps=w*h*4;
+  for(let s=0;s<maxSteps;s++){
+    let found=false;
+    for(let k=1;k<=8;k++){ // search clockwise
+      const d=(bd+k)%8,nx=cx+dx[d],ny=cy+dy[d];
+      if(nx>=0&&nx<w&&ny>=0&&ny<h&&bin[ny*w+nx]){
+        cx=nx;cy=ny;bd=(d+4)%8;
+        if(cx===sx&&cy===sy){if(chain.length>=3)return chain;break}
+        chain.push([cx,cy]);found=true;break;
+      }
+    }
+    if(!found)break;
+  }
+  return chain;
+}
+function otsu(g,w,h){
+  const n=w*h,hist=new Float64Array(256);let total=0;
+  for(let i=0;i<n;i++){const v=Math.floor(g[i]);hist[v]++;total+=v;}
+  let sumB=0,wB=0,max=0,th=0;
+  for(let t=0;t<256;t++){
+    wB+=hist[t];if(wB===0)continue;
+    const wF=n-wB;if(wF===0)break;
+    sumB+=t*hist[t];
+    const mB=sumB/wB,mF=(total-sumB)/wF;
+    const bv=wB*wF*(mB-mF)*(mB-mF);
+    if(bv>max){max=bv;th=t;}
+  }
+  return th;
+}
+function adaptive(g,w,h,th,bs){
+  const o=new Uint8Array(w*h),hf=bs>>1;
+  const it=new Float64Array((w+1)*(h+1));
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y+1)*(w+1)+(x+1);it[i]=g[y*w+x]+it[(y+1)*(w+1)+x]+it[y*(w+1)+(x+1)]-it[y*(w+1)+x]}
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const x1=Math.max(0,x-hf),y1=Math.max(0,y-hf),x2=Math.min(w-1,x+hf),y2=Math.min(h-1,y+hf);
+    const a=(x2-x1+1)*(y2-y1+1),s=it[(y2+1)*(w+1)+(x2+1)]-it[y1*(w+1)+(x2+1)]-it[(y2+1)*(w+1)+x1]+it[y1*(w+1)+x1];
+    o[y*w+x]=g[y*w+x]<s/a-th*0.35?1:0;
+  }
+  return o;
+}
+// Zhang-Suen skeletonization: thin lines to 1px centerlines
+function skeletonize(src,w,h){
+  const s=new Uint8Array(w*h);for(let i=0;i<w*h;i++)s[i]=src[i];
+  let changed=true;
+  const idx=(x,y)=>x>=0&&x<w&&y>=0&&y<h?y*w+x:-1;
+  const nb=(x,y)=>[idx(x,y-1),idx(x+1,y-1),idx(x+1,y),idx(x+1,y+1),idx(x,y+1),idx(x-1,y+1),idx(x-1,y),idx(x-1,y-1)];
+  const trans=(a,p)=>{let v=0;for(let i=0;i<8;i++){const ni=a[(p+i)%8];v+=(ni>=0&&s[ni])?1:0;}return v;};
+  while(changed){
+    changed=false;
+    const rm=[];
+    // Sub-iteration 1
+    for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+      const i=y*w+x;if(!s[i])continue;
+      const a=nb(x,y);const b=trans(a,0);
+      if(b<2||b>6)continue;
+      let t=0;for(let j=0;j<8;j++){const nj=a[j];const nj1=a[(j+1)%8];if(nj>=0&&nj1>=0&&!s[nj]&&s[nj1])t++;}
+      if(t!==1)continue;
+      const p2=a[0]>=0?s[a[0]]:0,p4=a[2]>=0?s[a[2]]:0,p6=a[4]>=0?s[a[4]]:0;
+      if(p2*p4*p6!==0)continue;
+      const p4b=a[2]>=0?s[a[2]]:0,p6b=a[4]>=0?s[a[4]]:0,p8b=a[6]>=0?s[a[6]]:0;
+      if(p4b*p6b*p8b!==0)continue;
+      rm.push(i);
+    }
+    for(const i of rm){s[i]=0;changed=true;}
+    rm.length=0;
+    // Sub-iteration 2
+    for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+      const i=y*w+x;if(!s[i])continue;
+      const a=nb(x,y);const b=trans(a,0);
+      if(b<2||b>6)continue;
+      let t=0;for(let j=0;j<8;j++){const nj=a[j];const nj1=a[(j+1)%8];if(nj>=0&&nj1>=0&&!s[nj]&&s[nj1])t++;}
+      if(t!==1)continue;
+      const p2=a[0]>=0?s[a[0]]:0,p4=a[2]>=0?s[a[2]]:0,p8=a[6]>=0?s[a[6]]:0;
+      if(p2*p4*p8!==0)continue;
+      const p2b=a[0]>=0?s[a[0]]:0,p6b=a[4]>=0?s[a[4]]:0,p8b=a[6]>=0?s[a[6]]:0;
+      if(p2b*p6b*p8b!==0)continue;
+      rm.push(i);
+    }
+    for(const i of rm){s[i]=0;changed=true;}
+  }
+  return s;
+}
+// Trace skeleton into ordered point chains (tagged with junction info)
+function traceSkeleton(skel,w,h,minLen){
+  const vis=new Uint8Array(w*h);let chains=[],cid=0;
+  for(let i=0;i<w*h;i++){
+    if(!skel[i]||vis[i])continue;
+    cid++;
+    const comp=[];const q=[i];vis[i]=1;
+    while(q.length){const p=q.pop();comp.push(p);const x=p%w,y=Math.floor(p/w);
+      for(const[dx,dy]of[[1,0],[1,-1],[0,-1],[-1,-1],[-1,0],[-1,1],[0,1],[1,1]]){
+        const nx=x+dx,ny=y+dy;if(nx>=0&&nx<w&&ny>=0&&ny<h){const ni=ny*w+nx;if(skel[ni]&&!vis[ni]){vis[ni]=1;q.push(ni)}}
+      }}
+    if(comp.length<minLen)continue;
+    const nbrs=idx=>{const x=idx%w,y=Math.floor(idx/w),r=[];
+      for(const[dx,dy]of[[1,0],[1,-1],[0,-1],[-1,-1],[-1,0],[-1,1],[0,1],[1,1]]){
+        const nx=x+dx,ny=y+dy;if(nx>=0&&nx<w&&ny>=0&&ny<h){const ni=ny*w+nx;if(skel[ni])r.push(ni)}
+      }return r;};
+    const deg=new Map();for(const c of comp)deg.set(c,nbrs(c).length);
+    const tv=new Set();
+    // Trace from endpoints (degree 1)
+    for(const c of comp){if(deg.get(c)!==1||tv.has(c))continue;
+      let cur=c;const ch=[[c%w,Math.floor(c/w)]];tv.add(c);
+      let endDeg=1;
+      while(true){const ns=nbrs(cur).filter(n=>!tv.has(n));if(ns.length===0)break;
+        let next=ns[0];if(ns.length>1){let bd=-1;for(const n of ns){const d=Math.abs(n-cur);if(d>bd){bd=d;next=n;}}}
+        ch.push([next%w,Math.floor(next/w)]);tv.add(next);cur=next;
+        endDeg=deg.get(cur);
+        if(endDeg!==2&&endDeg!==1)break;
+      }
+      if(ch.length>=minLen)chains.push({pts:ch,jStart:false,jEnd:endDeg>=3,cid});
+    }
+    // Trace remaining (loops / junction-to-junction)
+    for(const c of comp){if(tv.has(c))continue;
+      let cur=c;const ch=[[c%w,Math.floor(c/w)]];tv.add(c);
+      let endDeg=deg.get(c);
+      while(true){const ns=nbrs(cur).filter(n=>!tv.has(n));if(ns.length===0)break;
+        cur=ns[0];ch.push([cur%w,Math.floor(cur/w)]);tv.add(cur);endDeg=deg.get(cur);}
+      if(ch.length>=minLen)chains.push({pts:ch,jStart:deg.get(c)>=3,jEnd:endDeg>=3,cid});
+    }
+  }
+  // Close loops: if chain start/end are adjacent, connect them
+  for(let i=0;i<chains.length;i++){
+    const c=chains[i];
+    if(c.pts.length<4)continue;
+    const sx=c.pts[0][0],sy=c.pts[0][1],ex=c.pts[c.pts.length-1][0],ey=c.pts[c.pts.length-1][1];
+    if((sx-ex)*(sx-ex)+(sy-ey)*(sy-ey)<=36){
+      chains[i]={pts:[...c.pts,c.pts[0]],jStart:false,jEnd:false,cid:c.cid};
+    }
+  }
+  // Merge nearby chains with similar endpoint directions
+  let merged=true;
+  while(merged){
+    merged=false;
+    const used=new Set();
+    for(let i=0;i<chains.length;i++){
+      if(used.has(i))continue;
+      let ci=chains[i];
+      const ea=ci.pts[0],eb=ci.pts[ci.pts.length-1];
+      for(let j=i+1;j<chains.length;j++){
+        if(used.has(j))continue;
+        let cj=chains[j];
+        const fa=cj.pts[0],fb=cj.pts[cj.pts.length-1];
+        const mergeDist=20;
+        const pairs=[[eb,fa],[eb,fb],[ea,fa],[ea,fb]];
+        for(const [p1,p2] of pairs){
+          const dx=p1[0]-p2[0],dy=p1[1]-p2[1];
+          if(Math.sqrt(dx*dx+dy*dy)>mergeDist)continue;
+          const di=ci.pts.length>1?[ci.pts[ci.pts.length-1][0]-ci.pts[ci.pts.length-2][0],ci.pts[ci.pts.length-1][1]-ci.pts[ci.pts.length-2][1]]:[0,0];
+          const dj=cj.pts.length>1? (p2===fa? [cj.pts[1][0]-cj.pts[0][0],cj.pts[1][1]-cj.pts[0][1]]: [cj.pts[cj.pts.length-2][0]-cj.pts[cj.pts.length-1][0],cj.pts[cj.pts.length-2][1]-cj.pts[cj.pts.length-1][1]]) :[0,0];
+          const dot=di[0]*dj[0]+di[1]*dj[1];
+          if(Math.abs(dot)<0.25)continue;
+          let mergedPts;
+          if(p1===eb&&p2===fa)mergedPts=ci.pts.concat(cj.pts.slice(1));
+          else if(p1===eb&&p2===fb)mergedPts=ci.pts.concat(cj.pts.slice().reverse().slice(1));
+          else if(p1===ea&&p2===fa)mergedPts=cj.pts.slice().reverse().concat(ci.pts.slice(1));
+          else mergedPts=cj.pts.concat(ci.pts.slice(1));
+          ci={pts:mergedPts,jStart:false,jEnd:false,cid:ci.cid};
+          used.add(j);merged=true;break;
+        }
+        if(merged)break;
+      }
+      chains[i]=ci;
+    }
+    chains=chains.filter((_,idx)=>!used.has(idx));
+  }
+  return chains;
+}
+function smoothChain(pts,win){
+  // Weighted moving average to remove pixel stair-step artifacts
+  if(pts.length<=win+2)return pts;
+  const rs=[],w2=Math.floor(win/2);
+  for(let i=0;i<pts.length;i++){
+    let sx=0,sy=0,tw=0;
+    for(let j=Math.max(0,i-w2);j<=Math.min(pts.length-1,i+w2);j++){
+      const d=Math.abs(j-i),w=win-d; // triangle weight
+      sx+=pts[j][0]*w;sy+=pts[j][1]*w;tw+=w;
+    }
+    rs.push([sx/tw,sy/tw]);
+  }
+  return rs;
+}
+function dp(pts,eps){
+  if(pts.length<=2)return pts;
+  let md=0,mi=0;
+  const a=pts[0],b=pts[pts.length-1],dx=b[0]-a[0],dy=b[1]-a[1],l2=dx*dx+dy*dy;
+  if(l2===0){for(let i=1;i<pts.length-1;i++){const d=Math.hypot(pts[i][0]-a[0],pts[i][1]-a[1]);if(d>md){md=d;mi=i}}}
+  else{for(let i=1;i<pts.length-1;i++){const d=Math.abs(dy*pts[i][0]-dx*pts[i][1]+b[0]*a[1]-b[1]*a[0])/Math.sqrt(l2);if(d>md){md=d;mi=i}}}
+  if(md>eps){const l=dp(pts.slice(0,mi+1),eps),r=dp(pts.slice(mi),eps);return l.slice(0,-1).concat(r)}
+  return [a,b];
+}
+function cr(pts,n){
+  if(pts.length<2)return pts;
+  if(pts.length===2){const r=[];for(let i=0;i<=n;i++){const t=i/n;r.push([pts[0][0]+(pts[1][0]-pts[0][0])*t,pts[0][1]+(pts[1][1]-pts[0][1])*t])}return r}
+  const pp=[pts[0],...pts,pts[pts.length-1]],m=pp.length-3,res=[];
+  for(let i=0;i<m;i++){const p0=pp[i],p1=pp[i+1],p2=pp[i+2],p3=pp[i+3],st=i===m-1?n+1:n;for(let j=0;j<st;j++){const t=j/n,t2=t*t,t3=t2*t;res.push([.5*(2*p1[0]+(-p0[0]+p2[0])*t+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3),.5*(2*p1[1]+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3)])}}
+  return res;
+}
+`],{type:'application/javascript'});
+
+let WKR;
+function go(I){
+  const D=1400;let w=I.width,h=I.height;
+  const s=Math.min(1,D/Math.max(w,h));w=Math.round(w*s);h=Math.round(h*s);
+  const C=document.createElement('canvas');C.width=w;C.height=h;
+  C.getContext('2d').drawImage(I,0,0,w,h);
+  const src=C.getContext('2d').getImageData(0,0,w,h);
+  // Unsharp mask: enhance edges for blurry/low-quality images
+  if(P.enhance>0){
+    const d=src.data, amt=P.enhance*0.6, blur=new Uint8ClampedArray(d.length);
+    for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+      let r=0,g=0,b=0;
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+        const j=((y+dy)*w+(x+dx))*4;r+=d[j];g+=d[j+1];b+=d[j+2];
+      }
+      const i=(y*w+x)*4;blur[i]=r/9;blur[i+1]=g/9;blur[i+2]=b/9;blur[i+3]=255;
+    }
+    for(let i=0;i<d.length;i+=4){
+      d[i]=Math.min(255,Math.max(0,d[i]+amt*(d[i]-blur[i])));
+      d[i+1]=Math.min(255,Math.max(0,d[i+1]+amt*(d[i+1]-blur[i+1])));
+      d[i+2]=Math.min(255,Math.max(0,d[i+2]+amt*(d[i+2]-blur[i+2])));
+    }
+  }
+  $('loading').classList.add('show');
+  if(!WKR){WKR=new Worker(URL.createObjectURL(WK));WKR.onerror=e=>{toast('Worker\u5f02\u5e38');$('loading').classList.remove('show')};}
+  WKR.onmessage=e=>{
+    $('loading').classList.remove('show');
+    if(e.data.error){toast('\u9519\u8bef: '+e.data.error);return}
+    const {bin,pos,nor,basePos,baseNor,allVerts,allFaces,nc,hasBase,rawComp,rawContours}=e.data;
+    $('edgeCanvas').width=w;$('edgeCanvas').height=h;
+    const ei=new ImageData(w,h);
+    for(let i=0;i<w*h;i++){const v=bin[i]?0:255;ei.data[i*4]=v;ei.data[i*4+1]=v;ei.data[i*4+2]=v;ei.data[i*4+3]=255}
+    $('edgeCanvas').getContext('2d').putImageData(ei,0,0);
+    bld(pos,nor,basePos,baseNor,allVerts,allFaces,nc,hasBase,rawComp,rawContours);
+    const sc=$('statChip');
+    sc.textContent=`\u8f6e\u5ed3 ${nc} \u00b7 \u7ec4\u4ef6 ${rawComp}`;
+    sc.classList.add('show');
+  };
+  const pxCopy=new Uint8Array(src.data.length);pxCopy.set(src.data);
+  WKR.postMessage({px:pxCopy,w,h,th:P.threshold,sm:P.smoothness,ml:P.minLength,lh:P.lineHeight,lr:P.lineWidth/2,bt:P.baseThickness,bs:P.baseScale,dn:P.denoise,SN:12,gb:P.genBase,ed:P.edge});
+}
+
+function calcScale(){
+  if(!oiW||!oiH)return 1;
+  const bw=oiW>=oiH?100:100*oiW/oiH, bh=oiH>=oiW?100:100*oiH/oiW;
+  return Math.max(P.printW/bw, P.printH/bh);
+}
+function applyScale(){if(TUBE){const s=calcScale();TUBE.scale.set(s,s,1);if(BASE)BASE.scale.set(s,s,1)}}
+
+function bld(pos,nor,basePos,baseNor,allVerts,allFaces,nc,hasBase,rawComp,rawContours){
+  if(!SC||!nc){toast('\u672a\u68c0\u6d4b\u5230\u6709\u6548\u8f6e\u5ed3');return}
+  if(TUBE)SC.remove(TUBE);if(BASE)SC.remove(BASE);
+  // Tube mesh
+  const tGeo=new THREE.BufferGeometry();
+  tGeo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  tGeo.setAttribute('normal',new THREE.BufferAttribute(nor,3));
+  tGeo.computeBoundingSphere();
+  TUBE=new THREE.Mesh(tGeo,new THREE.MeshStandardMaterial({color:0xd4a574,metalness:0.9,roughness:0.28,side:THREE.DoubleSide}));
+  const s=calcScale();TUBE.scale.set(s,s,1);
+  SC.add(TUBE);
+  // Base mesh (separate, DoubleSide, darker)
+  if(hasBase&&basePos.length>0){
+    const bGeo=new THREE.BufferGeometry();
+    bGeo.setAttribute('position',new THREE.BufferAttribute(basePos,3));
+    bGeo.setAttribute('normal',new THREE.BufferAttribute(baseNor,3));
+    bGeo.computeBoundingSphere();
+    BASE=new THREE.Mesh(bGeo,new THREE.MeshStandardMaterial({color:0xb8956a,metalness:0.9,roughness:0.28,side:THREE.DoubleSide}));
+    BASE.scale.set(s,s,1);
+    SC.add(BASE);
+  }
+  CP={allVerts:Array.from(allVerts),allFaces,baseScale:s};
+  toast('\u751f\u6210 '+nc+' \u6761 (\u68c0\u6d4b'+rawComp+'\u5757/'+rawContours+'\u94fe)'+(hasBase?' +\u5e95\u677f':''));
+}
+
+function init3(){
+  if(SR)return;
+  const box=$('rightPanel'),w=box.clientWidth,h=box.clientHeight;
+  SR=new THREE.WebGLRenderer({canvas:$('threeCanvas'),antialias:true,alpha:true});
+  SR.setSize(w,h);SR.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  SC=new THREE.Scene();
+  CAM=new THREE.PerspectiveCamera(45,w/h,.1,1000);
+  CAM.position.set(BS*.8,BS*.5,BS*1.2);CAM.lookAt(0,0,0);
+  SC.add(new THREE.AmbientLight(0x404060,2));
+  const k=new THREE.DirectionalLight(0xffffff,3);k.position.set(1,1.5,1);SC.add(k);
+  const f=new THREE.DirectionalLight(0x8899cc,1.5);f.position.set(-.8,.3,-.5);SC.add(f);
+  const r=new THREE.DirectionalLight(0xd4a574,1.5);r.position.set(0,-.3,1);SC.add(r);
+  setupM();animate();
+}
+function setupM(){
+  const box=$('rightPanel');let dn=false,px=0,py=0,rx=0,ry=0,zm=1,lD=0;
+  box.addEventListener('pointerdown',e=>{dn=true;px=e.clientX;py=e.clientY});
+  window.addEventListener('pointermove',e=>{if(!dn||!TUBE)return;ry+=(e.clientX-px)*.005;rx+=(e.clientY-py)*.005;px=e.clientX;py=e.clientY;rx=Math.max(-Math.PI/3,Math.min(Math.PI/3,rx));TUBE.rotation.set(rx,ry,0);if(BASE)BASE.rotation.set(rx,ry,0)});
+  window.addEventListener('pointerup',()=>{dn=false});
+  box.addEventListener('wheel',e=>{e.preventDefault();zm+=e.deltaY*.001;zm=Math.max(.3,Math.min(3,zm));CAM.position.set(BS*.8*zm,BS*.5*zm,BS*1.2*zm);CAM.lookAt(0,0,0)},{passive:false});
+  box.addEventListener('touchstart',e=>{if(e.touches.length===2)lD=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY)});
+  box.addEventListener('touchmove',e=>{if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);zm+=(d-lD)*-.002;zm=Math.max(.3,Math.min(3,zm));lD=d;CAM.position.set(BS*.8*zm,BS*.5*zm,BS*1.2*zm);CAM.lookAt(0,0,0)}});
+}
+function animate(){requestAnimationFrame(animate);if(SR)SR.render(SC,CAM)}
+window.addEventListener('resize',()=>{if(!SR)return;const w=$('rightPanel').clientWidth,h=$('rightPanel').clientHeight;SR.setSize(w,h);CAM.aspect=w/h;CAM.updateProjectionMatrix()});
+
+function rebuild(){if(OI)go(OI)}
+function exportSTL(){
+  if(!CP||!CP.allVerts||!CP.allVerts.length){toast('\u8bf7\u5148\u751f\u6210\u6a21\u578b');return}
+  const {allVerts,allFaces,baseScale}=CP,s=baseScale||1,nt=allFaces.length;
+  const buf=new ArrayBuffer(84+50*nt),dv=new DataView(buf);
+  const h=new Uint8Array(buf,0,80);const ht='Cloisonne STL';for(let i=0;i<ht.length;i++)h[i]=ht.charCodeAt(i);
+  dv.setUint32(80,nt,true);let o=84;
+  for(const f of allFaces){
+    const a=f[0]*3,b=f[1]*3,c=f[2]*3;
+    const ax=allVerts[a]*s,ay=allVerts[a+1]*s,az=allVerts[a+2],bx=allVerts[b]*s,by=allVerts[b+1]*s,bz=allVerts[b+2],cx=allVerts[c]*s,cy=allVerts[c+1]*s,cz=allVerts[c+2];
+    const ux=bx-ax,uy=by-ay,uz=bz-az,vx=cx-ax,vy=cy-ay,vz=cz-az;
+    let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
+    const nl=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;
+    dv.setFloat32(o,nx/nl,true);o+=4;dv.setFloat32(o,ny/nl,true);o+=4;dv.setFloat32(o,nz/nl,true);o+=4;
+    [ax,ay,az,bx,by,bz,cx,cy,cz].forEach(v=>{dv.setFloat32(o,v,true);o+=4});
+    dv.setUint16(o,0,true);o+=2;
+  }
+  const blob=new Blob([buf],{type:'application/octet-stream'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='cloisonne.stl';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  toast('STL \u5df2\u5bfc\u51fa');
+}
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2000)}
+</script>
+</body>
+</html>
