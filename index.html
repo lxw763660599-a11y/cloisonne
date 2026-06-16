@@ -130,6 +130,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
           <option value="circle">圆形</option>
         </select>
       </label>
+      <div class="row">
+        <div class="control-item" data-tooltip="图框与轮廓之间的间距（mm），数值越大图框越远"><span class="control-label">图框间距</span><input type="range" id="frameMargin" min="1" max="20" step="0.5" value="2" disabled><span class="control-value" id="frameMarginVal">2mm</span></div>
+      </div>
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="rebuild()">刷新预览</button>
         <button class="btn btn-primary" onclick="exportSTL()">导出 STL</button>
@@ -181,8 +184,9 @@ $('denoise').addEventListener('input',()=>{P.denoise=+$('denoise').value;$('deno
 $('enhance').addEventListener('input',()=>{P.enhance=+$('enhance').value;$('enhanceVal').textContent=$('enhance').value;debounceRebuild()});
 $('genBase').addEventListener('change',()=>{P.genBase=$('genBase').checked;debounceRebuild()});
 $('edgeDetect').addEventListener('change',()=>{P.edge=$('edgeDetect').checked;debounceRebuild()});
-$('genFrame').addEventListener('change',()=>{P.genFrame=$('genFrame').checked;$('frameShape').disabled=!P.genFrame;debounceRebuild()});
+$('genFrame').addEventListener('change',()=>{P.genFrame=$('genFrame').checked;$('frameShape').disabled=!P.genFrame;$('frameMargin').disabled=!P.genFrame;debounceRebuild()});
 $('frameShape').addEventListener('change',()=>{P.frameShape=$('frameShape').value;debounceRebuild()});
+$('frameMargin').addEventListener('input',()=>{P.frameMargin=+$('frameMargin').value;$('frameMarginVal').textContent=$('frameMargin').value+'mm';debounceRebuild()});
 
 function debounceRebuild(){clearTimeout(rebDeb);rebDeb=setTimeout(()=>{if(OI)go(OI)},300)}
 
