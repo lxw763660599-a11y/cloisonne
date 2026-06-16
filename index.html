@@ -314,6 +314,8 @@ self.onmessage=function(e){
         TAF.push([b2,b3,t3],[b2,t3,t2],[b3,b0,t0],[b3,t0,t3]);
       }
     }
+    // --- Base arrays (declared here so frame base can append) ---
+    const BAV=[],BAF=[];let hasBase=false;
     // --- Build frame (outer border) ---
     if(fr&&out.length>0){
       let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
@@ -350,11 +352,31 @@ self.onmessage=function(e){
           addBar(cx+r*Math.cos(a1),cy+r*Math.sin(a1),cx+r*Math.cos(a2),cy+r*Math.sin(a2));
         }
       }
+      // Generate frame base plate (same height as main base)
+      if(bt>0){
+        const bz=-bt;
+        let fp;
+        if(frShape==='rect'){
+          fp=[[minX,minY],[maxX,minY],[maxX,maxY],[minX,maxY]];
+        }else{
+          const Rcx=(minX+maxX)/2,Rcy=(minY+maxY)/2;
+          const Rr=Math.max(maxX-minX,maxY-minY)/2+margin;
+          const segs=48;fp=[];
+          for(let i=0;i<segs;i++){const a=2*Math.PI*i/segs;fp.push([Rcx+Rr*Math.cos(a),Rcy+Rr*Math.sin(a)]);}
+        }
+        const n=fp.length;
+        for(const p of fp)BAV.push(p[0],p[1],0);
+        for(const p of fp)BAV.push(p[0],p[1],bz);
+        const tris=triangulate(fp);
+        for(const t of tris)BAF.push([t[0],t[1],t[2]]);
+        for(const t of tris)BAF.push([t[2]+n,t[1]+n,t[0]+n]);
+        for(let i=0;i<n;i++){const j=(i+1)%n;BAF.push([i,i+n,j+n],[i,j+n,j]);}
+        hasBase=true;
+      }
     }
     // --- Build base from contour chains (render + dilate + trace) ---
-    const BAV=[],BAF=[];let hasBase=false;
     if(gb&&bt>0&&out.length>0){
-      const bz=-bt;
+      const bz=-bt,baOff=BAV.length/3;
       // Render all contour points into a binary image
       const cImg=new Uint8Array(w*h);
       for(const c of out)for(const p of c.pts){
@@ -404,9 +426,9 @@ self.onmessage=function(e){
           for(const p of fp)BAV.push(p[0],p[1],bz);
           const tris=triangulate(fp);
           if(fp.length>n)fp.pop(); // remove centroid from fallback
-          for(const t of tris)BAF.push([t[0],t[1],t[2]]);
-          for(const t of tris)BAF.push([t[2]+n,t[1]+n,t[0]+n]);
-          for(let i=0;i<n;i++){const j=(i+1)%n;BAF.push([i,i+n,j+n],[i,j+n,j]);}
+          for(const t of tris)BAF.push([t[0]+baOff,t[1]+baOff,t[2]+baOff]);
+          for(const t of tris)BAF.push([t[2]+baOff+n,t[1]+baOff+n,t[0]+baOff+n]);
+          for(let i=0;i<n;i++){const j=(i+1)%n;BAF.push([i+baOff,i+baOff+n,j+baOff+n],[i+baOff,j+baOff+n,j+baOff]);}
           hasBase=true;
         }
       }
