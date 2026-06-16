@@ -117,6 +117,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <div class="control-item" data-tooltip="手动微调底板轮廓大小，贴合掐丝外圈"><span class="control-label">缩放</span><input type="range" id="baseScale" min="0.85" max="1.30" step="0.01" value="1.05"><span class="control-value" id="scaleVal">1.05</span></div>
         <div class="control-item" data-tooltip="底部连接板的厚度（mm），设为0则不生成底板"><span class="control-label">厚度</span><input type="range" id="baseThick" min="0" max="5" step="0.1" value="0.5"><span class="control-value" id="baseVal">0.5mm</span></div>
       </div>
+      <div class="row">
+        <div class="control-item" data-tooltip="底板向外扩张的像素距离，越大底板越宽，防止线宽变化导致底板缺失"><span class="control-label">底板扩展</span><input type="range" id="baseExpand" min="2" max="20" step="1" value="4"><span class="control-value" id="expandVal">4</span></div>
+      </div>
       <label class="base-toggle" title="勾选后在管体底部生成一块连接所有线条的底板，方便3D打印时保持结构完整">
         <input type="checkbox" id="genBase" checked><span>生成底板</span>
       </label>
@@ -169,7 +172,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 const $=id=>document.getElementById(id);
 (function(){const t=document.documentElement,b=$('thToggle');const saved=localStorage.getItem('cloisonne-theme');if(saved==='light'){t.dataset.theme='light';b.textContent='☾'}b.onclick=()=>{const isLight=t.dataset.theme==='light';if(isLight){delete t.dataset.theme;b.textContent='☀';localStorage.setItem('cloisonne-theme','dark')}else{t.dataset.theme='light';b.textContent='☾';localStorage.setItem('cloisonne-theme','light')}}})();
 let OI,SC,SR,CAM,TUBE,BASE,CP,BS=100,oiW,oiH,rebDeb;
-let P={threshold:20,smoothness:3,minLength:5,lineHeight:2,lineWidth:0.6,baseThickness:0.5,baseScale:1.05,denoise:0,enhance:0,printW:100,printH:100,genBase:true,edge:false,genFrame:false,frameShape:'rect',frameMargin:2};
+let P={threshold:20,smoothness:3,minLength:5,lineHeight:2,lineWidth:0.6,baseThickness:0.5,baseScale:1.05,baseExpand:4,denoise:0,enhance:0,printW:100,printH:100,genBase:true,edge:false,genFrame:false,frameShape:'rect',frameMargin:2};
 
 ['threshold','smoothness','minLength','lineHeight','lineWidth','baseThick'].forEach((id,i)=>{
   const k=Object.keys(P)[i],lb=['threshVal','smoothVal','minLenVal','heightVal','widthVal','baseVal'][i],
@@ -180,6 +183,7 @@ let P={threshold:20,smoothness:3,minLength:5,lineHeight:2,lineWidth:0.6,baseThic
 $('printW').addEventListener('input',()=>{P.printW=+$('printW').value;applyScale()});
 $('printH').addEventListener('input',()=>{P.printH=+$('printH').value;applyScale()});
 $('baseScale').addEventListener('input',()=>{P.baseScale=+$('baseScale').value;$('scaleVal').textContent=$('baseScale').value;debounceRebuild()});
+$('baseExpand').addEventListener('input',()=>{P.baseExpand=+$('baseExpand').value;$('expandVal').textContent=$('baseExpand').value;debounceRebuild()});
 $('denoise').addEventListener('input',()=>{P.denoise=+$('denoise').value;$('denoiseVal').textContent=$('denoise').value;debounceRebuild()});
 $('enhance').addEventListener('input',()=>{P.enhance=+$('enhance').value;$('enhanceVal').textContent=$('enhance').value;debounceRebuild()});
 $('genBase').addEventListener('change',()=>{P.genBase=$('genBase').checked;debounceRebuild()});
@@ -201,7 +205,7 @@ $('fileInput').addEventListener('change',e=>{
 const WK=new Blob([`
 self.onmessage=function(e){
   try{
-    const {px,w,h,th,sm,ml,lh,lr,bt,bs,dn,SN,gb,ed,fr,frShape,frMargin}=e.data;
+    const {px,w,h,th,sm,ml,lh,lr,bt,bs,be,dn,SN,gb,ed,fr,frShape,frMargin}=e.data;
     const g=new Float32Array(w*h);
     for(let i=0;i<w*h;i++)g[i]=px[i*4]*0.299+px[i*4+1]*0.587+px[i*4+2]*0.114;
     // Box blur on grayscale for anti-aliasing (smooths edge transitions)
@@ -358,7 +362,7 @@ self.onmessage=function(e){
         if(ix>=0&&ix<w&&iy>=0&&iy<h)cImg[iy*w+ix]=1;
       }
       // Dilate to bridge gaps and match tube outer edge
-      const cDil=dilate(cImg,w,h,Math.max(4,Math.floor(lr*w/BS)+Math.round(sm*0.5)+2));
+      const cDil=dilate(cImg,w,h,be);
       // Flood fill to get solid interior, eliminating porosity
       const filled=new Uint8Array(w*h);
       let fx=-1,fy=-1;
@@ -760,7 +764,7 @@ function go(I){
     sc.classList.add('show');
   };
   const pxCopy=new Uint8Array(src.data.length);pxCopy.set(src.data);
-  WKR.postMessage({px:pxCopy,w,h,th:P.threshold,sm:P.smoothness,ml:P.minLength,lh:P.lineHeight,lr:P.lineWidth/2,bt:P.baseThickness,bs:P.baseScale,dn:P.denoise,SN:12,gb:P.genBase,ed:P.edge,fr:P.genFrame,frShape:P.frameShape,frMargin:P.frameMargin});
+  WKR.postMessage({px:pxCopy,w,h,th:P.threshold,sm:P.smoothness,ml:P.minLength,lh:P.lineHeight,lr:P.lineWidth/2,bt:P.baseThickness,bs:P.baseScale,be:P.baseExpand,dn:P.denoise,SN:12,gb:P.genBase,ed:P.edge,fr:P.genFrame,frShape:P.frameShape,frMargin:P.frameMargin});
 }
 
 function calcScale(){
